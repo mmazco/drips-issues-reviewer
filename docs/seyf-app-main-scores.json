@@ -1,0 +1,842 @@
+[
+  {
+    "number": 32,
+    "title": "Dashboard UI: Real Data Binding & Loading States",
+    "grade": "A",
+    "total": 13,
+    "pct": 81,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 2,
+      "scope": 2,
+      "setup": 0,
+      "ac": 2,
+      "labels": 1,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 8,
+      "bodyChars": 1513,
+      "filePathCount": 3,
+      "filePathsSample": [
+        "/dashboard",
+        "/api/dashboard",
+        "/depositar"
+      ],
+      "areaCount": 1,
+      "frontmatterLabels": [
+        "dashboard",
+        "frontend",
+        "high"
+      ],
+      "ghLabels": [
+        "Stellar Wave"
+      ],
+      "hasMilestone": true,
+      "milestone": "Dashboard Real-Time Data",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 31,
+    "title": "Dashboard API: Live Capital, Yield & Advance Data",
+    "grade": "B",
+    "total": 12,
+    "pct": 75,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 1,
+      "scope": 1,
+      "setup": 2,
+      "ac": 2,
+      "labels": 0,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 8,
+      "bodyChars": 1404,
+      "filePathCount": 1,
+      "filePathsSample": [
+        "/api/dashboard"
+      ],
+      "areaCount": 2,
+      "frontmatterLabels": [
+        "dashboard",
+        "api",
+        "backend",
+        "high"
+      ],
+      "ghLabels": [],
+      "hasMilestone": true,
+      "milestone": "Dashboard Real-Time Data",
+      "codeBlock": true,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 29,
+    "title": "SPEI Off-ramp: Withdrawal Initiation & Status",
+    "grade": "B",
+    "total": 12,
+    "pct": 75,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 1,
+      "scope": 2,
+      "setup": 0,
+      "ac": 2,
+      "labels": 1,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 6,
+      "bodyChars": 1576,
+      "filePathCount": 1,
+      "filePathsSample": [
+        "/retirar"
+      ],
+      "areaCount": 1,
+      "frontmatterLabels": [
+        "spei",
+        "off-ramp",
+        "backend",
+        "critical"
+      ],
+      "ghLabels": [
+        "Stellar Wave"
+      ],
+      "hasMilestone": true,
+      "milestone": "SPEI Off-ramp: Withdrawal Flow",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 27,
+    "title": "Soroban Advance Contract: Rules & Buffer Logic",
+    "grade": "B",
+    "total": 12,
+    "pct": 75,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 1,
+      "scope": 2,
+      "setup": 0,
+      "ac": 2,
+      "labels": 1,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 7,
+      "bodyChars": 1596,
+      "filePathCount": 1,
+      "filePathsSample": [
+        "/contracts"
+      ],
+      "areaCount": 1,
+      "frontmatterLabels": [
+        "soroban",
+        "smart-contract",
+        "blockchain",
+        "critical"
+      ],
+      "ghLabels": [
+        "Stellar Wave"
+      ],
+      "hasMilestone": true,
+      "milestone": "Yield Advance Engine (Soroban)",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 40,
+    "title": "Simulaciones Monte Carlo: bonos soberanos, fondo ~100k USD y rendimiento Seyf",
+    "grade": "B",
+    "total": 11,
+    "pct": 69,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 1,
+      "scope": 2,
+      "setup": 0,
+      "ac": 2,
+      "labels": 1,
+      "milestone": 1
+    },
+    "meta": {
+      "titleWords": 11,
+      "bodyChars": 2637,
+      "filePathCount": 1,
+      "filePathsSample": [
+        "/docs"
+      ],
+      "areaCount": 0,
+      "frontmatterLabels": [],
+      "ghLabels": [
+        "enhancement"
+      ],
+      "hasMilestone": false,
+      "milestone": null,
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 38,
+    "title": "Observability: Logging, Alerts & Onchain Monitoring",
+    "grade": "B",
+    "total": 11,
+    "pct": 69,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 2,
+      "scope": 1,
+      "setup": 0,
+      "ac": 2,
+      "labels": 0,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 6,
+      "bodyChars": 1695,
+      "filePathCount": 2,
+      "filePathsSample": [
+        "/docs/runbooks/secret-rotation.md",
+        "/api/health"
+      ],
+      "areaCount": 2,
+      "frontmatterLabels": [
+        "observability",
+        "devops",
+        "medium"
+      ],
+      "ghLabels": [],
+      "hasMilestone": true,
+      "milestone": "Error Handling, Observability & Hardening",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 36,
+    "title": "In-App Async Status Polling & Pending States",
+    "grade": "B",
+    "total": 11,
+    "pct": 69,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 2,
+      "scope": 1,
+      "setup": 0,
+      "ac": 2,
+      "labels": 0,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 7,
+      "bodyChars": 1360,
+      "filePathCount": 2,
+      "filePathsSample": [
+        "/depositar",
+        "/retirar"
+      ],
+      "areaCount": 2,
+      "frontmatterLabels": [
+        "frontend",
+        "ux",
+        "medium"
+      ],
+      "ghLabels": [],
+      "hasMilestone": true,
+      "milestone": "Notifications & Async Status Updates",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 34,
+    "title": "History Screen: Real Data & Detail Views",
+    "grade": "B",
+    "total": 11,
+    "pct": 69,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 1,
+      "scope": 2,
+      "setup": 0,
+      "ac": 2,
+      "labels": 0,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 7,
+      "bodyChars": 1088,
+      "filePathCount": 1,
+      "filePathsSample": [
+        "/historial"
+      ],
+      "areaCount": 1,
+      "frontmatterLabels": [
+        "frontend",
+        "history",
+        "high"
+      ],
+      "ghLabels": [],
+      "hasMilestone": true,
+      "milestone": "Transaction History & State Machine",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 33,
+    "title": "Transaction State Machine & DB Schema",
+    "grade": "B",
+    "total": 11,
+    "pct": 69,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 2,
+      "scope": 1,
+      "setup": 0,
+      "ac": 2,
+      "labels": 0,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 6,
+      "bodyChars": 1593,
+      "filePathCount": 2,
+      "filePathsSample": [
+        "/historial",
+        "/scripts/migrations/"
+      ],
+      "areaCount": 2,
+      "frontmatterLabels": [
+        "backend",
+        "database",
+        "state-machine",
+        "high"
+      ],
+      "ghLabels": [],
+      "hasMilestone": true,
+      "milestone": "Transaction History & State Machine",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 25,
+    "title": "Stellar Wallet Provisioning via Pollar",
+    "grade": "B",
+    "total": 11,
+    "pct": 69,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 0,
+      "scope": 2,
+      "setup": 0,
+      "ac": 2,
+      "labels": 1,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 5,
+      "bodyChars": 1379,
+      "filePathCount": 0,
+      "filePathsSample": [],
+      "areaCount": 1,
+      "frontmatterLabels": [
+        "stellar",
+        "blockchain",
+        "pollar",
+        "critical"
+      ],
+      "ghLabels": [
+        "Stellar Wave"
+      ],
+      "hasMilestone": true,
+      "milestone": "Stellar/Soroban Backend Integration",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 20,
+    "title": "Auth Middleware: Protected Routes & JWT Sessions",
+    "grade": "B",
+    "total": 11,
+    "pct": 69,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 2,
+      "scope": 1,
+      "setup": 0,
+      "ac": 2,
+      "labels": 0,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 7,
+      "bodyChars": 1423,
+      "filePathCount": 6,
+      "filePathsSample": [
+        "app/app/layout.ts",
+        "/app/*",
+        "/login",
+        "middleware.ts"
+      ],
+      "areaCount": 2,
+      "frontmatterLabels": [
+        "auth",
+        "backend",
+        "middleware",
+        "critical"
+      ],
+      "ghLabels": [],
+      "hasMilestone": true,
+      "milestone": "Authentication & Session Management",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 42,
+    "title": "Advance Simulator: Interactive Amount Picker & Confirmation Sheet",
+    "grade": "C",
+    "total": 10,
+    "pct": 63,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 2,
+      "scope": 0,
+      "setup": 0,
+      "ac": 2,
+      "labels": 0,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 8,
+      "bodyChars": 2844,
+      "filePathCount": 7,
+      "filePathsSample": [
+        "app/app/adelanto/page.ts",
+        "components/app/advance-simulator.ts",
+        "components/app/dashboard-client.ts",
+        "/adelanto"
+      ],
+      "areaCount": 3,
+      "frontmatterLabels": [
+        "frontend",
+        "ux",
+        "advance",
+        "high"
+      ],
+      "ghLabels": [],
+      "hasMilestone": true,
+      "milestone": "Frontend Polish & UX Hardening",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 41,
+    "title": "Onboarding Flow: Multi-Step Registration & Empty States",
+    "grade": "C",
+    "total": 10,
+    "pct": 63,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 2,
+      "scope": 0,
+      "setup": 0,
+      "ac": 2,
+      "labels": 0,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 7,
+      "bodyChars": 2805,
+      "filePathCount": 11,
+      "filePathsSample": [
+        "app/registro/page.ts",
+        "app/login/page.ts",
+        "components/app/dashboard-client.ts",
+        "/registro"
+      ],
+      "areaCount": 3,
+      "frontmatterLabels": [
+        "frontend",
+        "ux",
+        "onboarding",
+        "high"
+      ],
+      "ghLabels": [],
+      "hasMilestone": true,
+      "milestone": "Frontend Polish & UX Hardening",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 35,
+    "title": "Push / SMS Notification Service Integration",
+    "grade": "C",
+    "total": 10,
+    "pct": 63,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 0,
+      "scope": 1,
+      "setup": 0,
+      "ac": 2,
+      "labels": 1,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 6,
+      "bodyChars": 1400,
+      "filePathCount": 0,
+      "filePathsSample": [],
+      "areaCount": 2,
+      "frontmatterLabels": [
+        "notifications",
+        "backend",
+        "medium"
+      ],
+      "ghLabels": [
+        "Stellar Wave"
+      ],
+      "hasMilestone": true,
+      "milestone": "Notifications & Async Status Updates",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 30,
+    "title": "Off-ramp Reconciliation & Webhook Handling",
+    "grade": "C",
+    "total": 10,
+    "pct": 63,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 0,
+      "scope": 2,
+      "setup": 0,
+      "ac": 2,
+      "labels": 0,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 5,
+      "bodyChars": 1302,
+      "filePathCount": 0,
+      "filePathsSample": [],
+      "areaCount": 1,
+      "frontmatterLabels": [
+        "spei",
+        "reconciliation",
+        "backend",
+        "high"
+      ],
+      "ghLabels": [],
+      "hasMilestone": true,
+      "milestone": "SPEI Off-ramp: Withdrawal Flow",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 28,
+    "title": "Advance Engine API: Simulate & Confirm Endpoints",
+    "grade": "C",
+    "total": 10,
+    "pct": 63,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 1,
+      "scope": 0,
+      "setup": 0,
+      "ac": 2,
+      "labels": 1,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 7,
+      "bodyChars": 1613,
+      "filePathCount": 1,
+      "filePathsSample": [
+        "/adelanto"
+      ],
+      "areaCount": 3,
+      "frontmatterLabels": [
+        "advance",
+        "backend",
+        "api",
+        "critical"
+      ],
+      "ghLabels": [
+        "Stellar Wave"
+      ],
+      "hasMilestone": true,
+      "milestone": "Yield Advance Engine (Soroban)",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 26,
+    "title": "MXNe Bridge & Stablebonds Auto-Deployment",
+    "grade": "C",
+    "total": 10,
+    "pct": 63,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 0,
+      "scope": 2,
+      "setup": 0,
+      "ac": 2,
+      "labels": 0,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 5,
+      "bodyChars": 1450,
+      "filePathCount": 0,
+      "filePathsSample": [],
+      "areaCount": 1,
+      "frontmatterLabels": [
+        "stellar",
+        "etherfuse",
+        "stablebonds",
+        "critical"
+      ],
+      "ghLabels": [],
+      "hasMilestone": true,
+      "milestone": "Stellar/Soroban Backend Integration",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 24,
+    "title": "Deposit Ledger & Auto-Deploy Trigger",
+    "grade": "C",
+    "total": 10,
+    "pct": 63,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 0,
+      "scope": 2,
+      "setup": 0,
+      "ac": 2,
+      "labels": 0,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 5,
+      "bodyChars": 1591,
+      "filePathCount": 0,
+      "filePathsSample": [],
+      "areaCount": 1,
+      "frontmatterLabels": [
+        "spei",
+        "blockchain",
+        "backend",
+        "critical"
+      ],
+      "ghLabels": [],
+      "hasMilestone": true,
+      "milestone": "SPEI Deposit: CLABE & Webhooks",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 23,
+    "title": "SPEI Inbound: Virtual CLABE Generation & Webhook",
+    "grade": "C",
+    "total": 10,
+    "pct": 63,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 1,
+      "scope": 1,
+      "setup": 0,
+      "ac": 2,
+      "labels": 0,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 7,
+      "bodyChars": 1756,
+      "filePathCount": 1,
+      "filePathsSample": [
+        "/depositar"
+      ],
+      "areaCount": 2,
+      "frontmatterLabels": [
+        "spei",
+        "payments",
+        "backend",
+        "critical"
+      ],
+      "ghLabels": [],
+      "hasMilestone": true,
+      "milestone": "SPEI Deposit: CLABE & Webhooks",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 19,
+    "title": "Auth API: Phone/Email OTP Registration",
+    "grade": "C",
+    "total": 10,
+    "pct": 63,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 1,
+      "scope": 1,
+      "setup": 0,
+      "ac": 2,
+      "labels": 0,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 5,
+      "bodyChars": 1787,
+      "filePathCount": 1,
+      "filePathsSample": [
+        "/registro"
+      ],
+      "areaCount": 2,
+      "frontmatterLabels": [
+        "auth",
+        "backend",
+        "critical"
+      ],
+      "ghLabels": [],
+      "hasMilestone": true,
+      "milestone": "Authentication & Session Management",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 22,
+    "title": "KYC Review State Machine & Deposit Limit Unlock",
+    "grade": "C",
+    "total": 9,
+    "pct": 56,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 0,
+      "scope": 1,
+      "setup": 0,
+      "ac": 2,
+      "labels": 0,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 8,
+      "bodyChars": 1295,
+      "filePathCount": 0,
+      "filePathsSample": [],
+      "areaCount": 2,
+      "frontmatterLabels": [
+        "kyc",
+        "backend",
+        "critical"
+      ],
+      "ghLabels": [],
+      "hasMilestone": true,
+      "milestone": "KYC / Merchant Onboarding",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  },
+  {
+    "number": 21,
+    "title": "KYC Data Collection Flow & Document Upload",
+    "grade": "C",
+    "total": 9,
+    "pct": 56,
+    "checks": {
+      "title": 2,
+      "body": 2,
+      "files": 1,
+      "scope": 0,
+      "setup": 0,
+      "ac": 2,
+      "labels": 0,
+      "milestone": 2
+    },
+    "meta": {
+      "titleWords": 7,
+      "bodyChars": 1595,
+      "filePathCount": 1,
+      "filePathsSample": [
+        "/identidad"
+      ],
+      "areaCount": 3,
+      "frontmatterLabels": [
+        "kyc",
+        "onboarding",
+        "backend",
+        "critical"
+      ],
+      "ghLabels": [],
+      "hasMilestone": true,
+      "milestone": "KYC / Merchant Onboarding",
+      "codeBlock": false,
+      "explicitAC": true,
+      "implicitAC": false
+    }
+  }
+]
