@@ -61,6 +61,41 @@ function getFailAdvice(label: string): string {
   return m[label] || "Add more detail";
 }
 
+interface VeraReview {
+  verdict?: string;
+  suggested_complexity?: string;
+  complexity_reasoning?: string;
+  rewritten_title?: string | null;
+  missing?: string[];
+  scope_concern?: string | null;
+  suggestions?: string;
+  comment_draft?: string;
+  _simulated?: boolean;
+  error?: string;
+}
+
+// Build the QA comment textarea contents from a Vera review. Prefers the
+// markdown `comment_draft` Vera returns via the drips-qa-feedback skill;
+// falls back to the local template if Vera didn't include one (offline
+// fallback, old simulated reviews, etc.).
+function draftCommentFrom(review: VeraReview | undefined, issue: GitHubIssue, scored: ScoredIssue): string {
+  if (review?.comment_draft && review.comment_draft.trim()) return review.comment_draft;
+
+  const missing =
+    review?.missing && review.missing.length > 0
+      ? review.missing
+      : Object.entries(scored.checks)
+          .filter(([, v]) => v.status === "fail")
+          .map(([k]) => {
+            const r = RUBRIC.find(r => r.key === k);
+            return r ? `Missing ${r.label}` : k;
+          });
+  const suggestions =
+    review?.suggestions || "Add file paths, acceptance criteria, and setup steps per the Drips rubric.";
+  const complexity = review?.suggested_complexity || scored.suggestedComplexity;
+  return buildVeraComment(issue.title, missing, suggestions, complexity);
+}
+
 function generateVeraResponse(message: string, scored: ScoredIssue): { text: string; commentDraft?: string } {
   const fails = Object.entries(scored.checks).filter(([, v]) => v.status === "fail");
   const failLabels = fails.map(([k]) => RUBRIC.find(r => r.key === k)?.label || k);
@@ -117,6 +152,7 @@ function ReviewContent() {
   const [veraChats, setVeraChats] = useState<Record<number, VeraMessage[]>>({});
   const [veraInput, setVeraInput] = useState<Record<number, string>>({});
   const [veraSending, setVeraSending] = useState<Record<number, boolean>>({});
+  const [refineOpen, setRefineOpen] = useState<Record<number, boolean>>({});
   const autoRan = useRef(false);
 
   const summary = useMemo(() => summarizeRepo(issues), [issues]);
@@ -170,7 +206,6 @@ function ReviewContent() {
       const found = summary?.scored.find(s => s.issue.number === num);
       if (found) {
         setExpandedIssues(prev => new Set([...prev, num]));
-        prepareQAComment(found.issue, found);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -200,6 +235,14 @@ function ReviewContent() {
     };
   }
 
+  // Apply a review to state: store it, and auto-draft the editable QA
+  // comment unless the user has already edited one for this issue.
+  function applyReview(issue: GitHubIssue, scored: ScoredIssue, review: VeraReview) {
+    const key = issue.number;
+    setAiReviews(prev => ({ ...prev, [key]: review as unknown as Record<string, unknown> }));
+    setQaComments(prev => (prev[key] ? prev : { ...prev, [key]: draftCommentFrom(review, issue, scored) }));
+  }
+
   async function runAIReview(issue: GitHubIssue) {
     const key = issue.number;
     if (aiReviews[key] || aiLoading[key]) return;
@@ -207,7 +250,6 @@ function ReviewContent() {
 
     const scored = summary?.scored.find(s => s.issue.number === key);
     if (!scored) {
-      setAiReviews(prev => ({ ...prev, [key]: simulatedReview(issue, key) }));
       setAiLoading(prev => ({ ...prev, [key]: false }));
       return;
     }
@@ -235,20 +277,18 @@ function ReviewContent() {
       });
 
       if (!res.ok) {
-        // Vera unreachable or returned an error — fall back to the deterministic
-        // rubric-based review so the UI still produces useful output.
-        setAiReviews(prev => ({ ...prev, [key]: simulatedReview(issue, key) }));
+        applyReview(issue, scored, simulatedReview(issue, key));
         return;
       }
 
       const data = await res.json();
       if (data?.review && !("error" in data.review)) {
-        setAiReviews(prev => ({ ...prev, [key]: data.review }));
+        applyReview(issue, scored, data.review as VeraReview);
       } else {
-        setAiReviews(prev => ({ ...prev, [key]: simulatedReview(issue, key) }));
+        applyReview(issue, scored, simulatedReview(issue, key));
       }
     } catch {
-      setAiReviews(prev => ({ ...prev, [key]: simulatedReview(issue, key) }));
+      applyReview(issue, scored, simulatedReview(issue, key));
     } finally {
       setAiLoading(prev => ({ ...prev, [key]: false }));
     }
@@ -256,11 +296,8 @@ function ReviewContent() {
 
   function prepareQAComment(issue: GitHubIssue, scored: ScoredIssue) {
     if (qaComments[issue.number]) return;
-    const ai = aiReviews[issue.number] as { missing?: string[]; suggestions?: string; suggested_complexity?: string } | undefined;
-    const missing = ai?.missing || Object.entries(scored.checks).filter(([, v]) => v.status === "fail").map(([k]) => { const r = RUBRIC.find(r => r.key === k); return r ? `Missing ${r.label}` : k; });
-    const suggestions = ai?.suggestions || "Add file paths, acceptance criteria, and setup steps per the Drips rubric.";
-    const complexity = ai?.suggested_complexity || scored.suggestedComplexity;
-    setQaComments(prev => ({ ...prev, [issue.number]: buildVeraComment(issue.title, missing as string[], suggestions as string, complexity as string) }));
+    const review = aiReviews[issue.number] as VeraReview | undefined;
+    setQaComments(prev => ({ ...prev, [issue.number]: draftCommentFrom(review, issue, scored) }));
   }
 
   async function submitQAComment(issue: GitHubIssue) {
@@ -494,62 +531,99 @@ function ReviewContent() {
                         </div>
                       </div>
 
-                      {/* Vera chat */}
-                      <div>
-                        <div className="text-xs text-gray-700 font-semibold uppercase tracking-wide mb-3">QA chat with Vera</div>
-                        <div className="bg-white border border-black rounded-xl overflow-hidden">
-                          <div className="px-4 py-3 space-y-3 min-h-[80px] max-h-64 overflow-y-auto">
-                            {chat.length === 0 && (
-                              <div className="text-xs text-gray-700 bg-gray-50 rounded-xl px-3 py-2.5 leading-relaxed">
-                                👋 Hi, I'm Vera. Ask me what's missing, or say <span className="font-medium text-gray-500">"write feedback"</span> to draft a QA comment for this issue.
-                              </div>
-                            )}
-                            {chat.map((msg, i) => (
-                              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                                <div className={`text-xs px-3 py-2 rounded-xl max-w-[85%] leading-relaxed ${msg.role === "user" ? "bg-[#6366f1] text-white" : "bg-gray-100 text-gray-700"}`}>
-                                  <div className="whitespace-pre-wrap">{msg.text}</div>
-                                  {msg.commentDraft && (
-                                    <button
-                                      onClick={() => { setQaComments(prev => ({ ...prev, [x.issue.number]: msg.commentDraft! })); }}
-                                      className="mt-2 text-xs font-semibold bg-white text-[#6366f1] px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors block w-full text-left"
-                                    >
-                                      Use as feedback →
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                            {veraSending[x.issue.number] && (
-                              <div className="flex justify-start">
-                                <div className="text-xs text-gray-400 bg-gray-100 px-3 py-2 rounded-xl animate-pulse">Vera is typing…</div>
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 px-3 py-2.5 border-t border-gray-100">
-                            <input
-                              value={veraInput[x.issue.number] || ""}
-                              onChange={e => setVeraInput(prev => ({ ...prev, [x.issue.number]: e.target.value }))}
-                              onKeyDown={e => e.key === "Enter" && sendToVera(x.issue, x)}
-                              placeholder="Ask Vera about this issue…"
-                              className="flex-1 text-xs bg-transparent outline-none text-[#111827] placeholder:text-gray-400"
-                            />
+                      {/* 1. Pre-review: prominent CTA. Post-review: review card + re-run. */}
+                      {!ai && !aiLoading[x.issue.number] && (
+                        <button
+                          onClick={() => runAIReview(x.issue)}
+                          className="w-full py-3.5 text-sm font-semibold bg-[#6366f1] text-white rounded-xl hover:bg-[#4f52cc] transition-colors"
+                        >
+                          Run review with Vera
+                        </button>
+                      )}
+
+                      {aiLoading[x.issue.number] && (
+                        <div>
+                          <div className="text-xs text-gray-700 font-semibold uppercase tracking-wide mb-2">Review with Vera</div>
+                          <div className="text-xs text-gray-400 animate-pulse bg-white border border-gray-100 rounded-xl px-4 py-3">Vera is reviewing…</div>
+                        </div>
+                      )}
+
+                      {ai && !aiLoading[x.issue.number] && (
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="text-xs text-gray-700 font-semibold uppercase tracking-wide">
+                              Review with Vera
+                              {(ai as { _simulated?: boolean })?._simulated && <span className="ml-1.5 text-amber-500 normal-case">⚡ simulated</span>}
+                            </div>
                             <button
-                              onClick={() => sendToVera(x.issue, x)}
-                              disabled={!veraInput[x.issue.number]?.trim() || veraSending[x.issue.number]}
-                              className="text-xs font-semibold text-[#6366f1] hover:text-[#4f52cc] disabled:opacity-30 transition-colors px-1"
+                              onClick={() => {
+                                const key = x.issue.number;
+                                setAiReviews(prev => { const n = { ...prev }; delete n[key]; return n; });
+                                runAIReview(x.issue);
+                              }}
+                              className="text-xs text-gray-400 hover:text-[#6366f1] transition-colors"
                             >
-                              Send
+                              ↻ Re-run
                             </button>
                           </div>
-                        </div>
-                      </div>
 
-                      {/* QA comment composer */}
+                          {!(ai as { error?: string }).error && (() => {
+                            const r = ai as { verdict: string; suggested_complexity: string; complexity_reasoning?: string; rewritten_title?: string; missing?: string[]; scope_concern?: string; suggestions?: string };
+                            return (
+                              <div className="bg-white border border-black rounded-xl p-4 space-y-3 text-sm">
+                                <div className="flex gap-2 flex-wrap">
+                                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${r.verdict === "ready" ? "bg-green-50 text-green-700" : r.verdict === "needs-work" ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"}`}>{r.verdict}</span>
+                                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${complexityBadge(r.suggested_complexity)}`}>{r.suggested_complexity}</span>
+                                </div>
+                                {r.complexity_reasoning && <p className="text-xs text-[#111827]">{r.complexity_reasoning}</p>}
+                                {r.rewritten_title && (
+                                  <div className="text-xs text-gray-500 italic border-l-2 border-gray-200 pl-3">Suggested title: &ldquo;{r.rewritten_title}&rdquo;</div>
+                                )}
+                                {r.missing && r.missing.length > 0 && (
+                                  <div>
+                                    <div className="text-xs text-gray-600 mb-1 font-medium">Missing</div>
+                                    <ul className="text-xs text-gray-800 space-y-0.5 list-disc list-inside">{r.missing.map((m: string, i: number) => <li key={i}>{m}</li>)}</ul>
+                                  </div>
+                                )}
+                                {r.scope_concern && <div className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2"><strong>Scope:</strong> {r.scope_concern}</div>}
+                                {r.suggestions && (
+                                  <div>
+                                    <div className="text-xs text-gray-600 mb-1 font-medium">Suggestions</div>
+                                    <div className="text-xs text-gray-600 whitespace-pre-wrap">{r.suggestions}</div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {(ai as { error?: string })?.error && (
+                            <div className="text-xs text-red-500 bg-red-50 rounded-xl px-4 py-3">Error: {(ai as { error: string }).error}</div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* 2. QA comment — auto-drafted from review, editable, posts to GitHub */}
                       {(qaComments[x.issue.number] || qaPosted[x.issue.number]) && (
                         <div>
                           <div className="flex items-center justify-between mb-2">
-                            <div className="text-xs text-gray-700 font-semibold uppercase tracking-wide">QA comment</div>
-                            {qaPosted[x.issue.number] && <span className="text-xs text-green-600 font-medium">✓ Posted</span>}
+                            <div className="text-xs text-gray-700 font-semibold uppercase tracking-wide">Comment for GitHub</div>
+                            <div className="flex items-center gap-3">
+                              {qaPosted[x.issue.number] && <span className="text-xs text-green-600 font-medium">✓ Posted</span>}
+                              {!qaPosted[x.issue.number] && ai && (
+                                <button
+                                  onClick={() => {
+                                    const scoredNow = summary?.scored.find(s => s.issue.number === x.issue.number);
+                                    if (!scoredNow) return;
+                                    const review = aiReviews[x.issue.number] as VeraReview | undefined;
+                                    setQaComments(prev => ({ ...prev, [x.issue.number]: draftCommentFrom(review, x.issue, scoredNow) }));
+                                  }}
+                                  className="text-xs text-gray-400 hover:text-[#6366f1] transition-colors"
+                                  title="Restore Vera's original draft (discards your edits)"
+                                >
+                                  ↻ reset from review
+                                </button>
+                              )}
+                            </div>
                           </div>
                           {qaPosted[x.issue.number] ? (
                             <div className="bg-white border border-black rounded-xl px-4 py-3 text-xs font-mono text-[#111827] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">{qaComments[x.issue.number]}</div>
@@ -558,15 +632,15 @@ function ReviewContent() {
                               <textarea
                                 value={qaComments[x.issue.number] || ""}
                                 onChange={e => setQaComments(prev => ({ ...prev, [x.issue.number]: e.target.value }))}
-                                rows={7}
-                                className="w-full bg-white border border-black rounded-xl px-4 py-3 text-xs font-mono leading-relaxed focus:outline-none focus:border-[#6366f1] resize-none"
+                                rows={10}
+                                className="w-full bg-white border border-black rounded-xl px-4 py-3 text-xs font-mono leading-relaxed focus:outline-none focus:border-[#6366f1] resize-y"
                               />
                               <div className="flex items-center gap-2">
                                 {!isConnected && <span className="text-xs text-gray-600 flex-1">⚡ Simulated — <a href="/api/auth/github" className="text-[#6366f1] hover:underline">connect GitHub</a> to post for real</span>}
                                 <button onClick={() => setQaComments(prev => { const n = { ...prev }; delete n[x.issue.number]; return n; })} className="text-xs text-[#111827] hover:text-red-500 transition-colors ml-auto">Discard</button>
                                 <button
                                   onClick={() => submitQAComment(x.issue)}
-                                  disabled={qaPosting[x.issue.number]}
+                                  disabled={qaPosting[x.issue.number] || !qaComments[x.issue.number]?.trim()}
                                   className="text-xs font-semibold bg-[#6366f1] text-white px-4 py-2 rounded-lg hover:bg-[#4f52cc] disabled:opacity-50 transition-colors"
                                 >
                                   {qaPosting[x.issue.number] ? "Posting…" : isConnected ? "Post to GitHub" : "Simulate post ⚡"}
@@ -577,65 +651,63 @@ function ReviewContent() {
                         </div>
                       )}
 
-                      {/* Draft QA comment CTA (if no draft yet) */}
-                      {needsFeedback && !qaComments[x.issue.number] && !qaPosted[x.issue.number] && (
-                        <button
-                          onClick={() => prepareQAComment(x.issue, x)}
-                          className="w-full py-2 text-sm font-semibold bg-[#6366f1] text-white rounded-xl hover:bg-[#4f52cc] transition-colors"
-                        >
-                          Draft QA comment
-                        </button>
-                      )}
-
-                      {/* AI deep review */}
+                      {/* 3. Refine with Vera — collapsed disclosure */}
                       <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="text-xs text-gray-700 font-semibold uppercase tracking-wide">
-                            Vera Deep Review
-                            {(ai as { _simulated?: boolean })?._simulated && <span className="ml-1.5 text-amber-500 normal-case">⚡ simulated</span>}
-                          </div>
-                          {!ai && !aiLoading[x.issue.number] && (
-                            <button onClick={() => runAIReview(x.issue)} className="text-xs font-semibold text-[#6366f1] hover:text-[#4f52cc] transition-colors">
-                              Run Review
-                            </button>
-                          )}
-                        </div>
+                        <button
+                          onClick={() => setRefineOpen(prev => ({ ...prev, [x.issue.number]: !prev[x.issue.number] }))}
+                          className="text-xs text-gray-500 hover:text-[#6366f1] transition-colors flex items-center gap-1.5"
+                        >
+                          <span>{refineOpen[x.issue.number] ? "▾" : "▸"}</span>
+                          <span>Refine with Vera</span>
+                          {chat.length > 0 && <span className="text-gray-400">({chat.length})</span>}
+                        </button>
 
-                        {aiLoading[x.issue.number] && (
-                          <div className="text-xs text-gray-400 animate-pulse bg-white border border-gray-100 rounded-xl px-4 py-3">Vera is reviewing…</div>
-                        )}
-
-                        {ai && !(ai as { error?: string }).error && (() => {
-                          const r = ai as { verdict: string; suggested_complexity: string; complexity_reasoning?: string; rewritten_title?: string; missing?: string[]; scope_concern?: string; suggestions?: string };
-                          return (
-                            <div className="bg-white border border-black rounded-xl p-4 space-y-3 text-sm">
-                              <div className="flex gap-2 flex-wrap">
-                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${r.verdict === "ready" ? "bg-green-50 text-green-700" : r.verdict === "needs-work" ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"}`}>{r.verdict}</span>
-                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${complexityBadge(r.suggested_complexity)}`}>{r.suggested_complexity}</span>
-                              </div>
-                              {r.complexity_reasoning && <p className="text-xs text-[#111827]">{r.complexity_reasoning}</p>}
-                              {r.rewritten_title && (
-                                <div className="text-xs text-gray-500 italic border-l-2 border-gray-200 pl-3">Suggested title: "{r.rewritten_title}"</div>
-                              )}
-                              {r.missing && r.missing.length > 0 && (
-                                <div>
-                                  <div className="text-xs text-gray-600 mb-1 font-medium">Missing</div>
-                                  <ul className="text-xs text-gray-800 space-y-0.5 list-disc list-inside">{r.missing.map((m: string, i: number) => <li key={i}>{m}</li>)}</ul>
+                        {refineOpen[x.issue.number] && (
+                          <div className="bg-white border border-black rounded-xl overflow-hidden mt-2">
+                            <div className="px-4 py-3 space-y-3 min-h-[60px] max-h-64 overflow-y-auto">
+                              {chat.length === 0 && (
+                                <div className="text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2.5 leading-relaxed">
+                                  Ask follow-up questions about this review, or say <span className="font-medium text-gray-700">&ldquo;write feedback&rdquo;</span> to have Vera propose a replacement comment draft.
                                 </div>
                               )}
-                              {r.scope_concern && <div className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2"><strong>Scope:</strong> {r.scope_concern}</div>}
-                              {r.suggestions && (
-                                <div>
-                                  <div className="text-xs text-gray-600 mb-1 font-medium">Suggestions</div>
-                                  <div className="text-xs text-gray-600 whitespace-pre-wrap">{r.suggestions}</div>
+                              {chat.map((msg, i) => (
+                                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                                  <div className={`text-xs px-3 py-2 rounded-xl max-w-[85%] leading-relaxed ${msg.role === "user" ? "bg-[#6366f1] text-white" : "bg-gray-100 text-gray-700"}`}>
+                                    <div className="whitespace-pre-wrap">{msg.text}</div>
+                                    {msg.commentDraft && (
+                                      <button
+                                        onClick={() => { setQaComments(prev => ({ ...prev, [x.issue.number]: msg.commentDraft! })); }}
+                                        className="mt-2 text-xs font-semibold bg-white text-[#6366f1] px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors block w-full text-left"
+                                      >
+                                        Use this draft in the comment box above →
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                              {veraSending[x.issue.number] && (
+                                <div className="flex justify-start">
+                                  <div className="text-xs text-gray-400 bg-gray-100 px-3 py-2 rounded-xl animate-pulse">Vera is typing…</div>
                                 </div>
                               )}
                             </div>
-                          );
-                        })()}
-
-                        {(ai as { error?: string })?.error && (
-                          <div className="text-xs text-red-500 bg-red-50 rounded-xl px-4 py-3">Error: {(ai as { error: string }).error}</div>
+                            <div className="flex items-center gap-2 px-3 py-2.5 border-t border-gray-100">
+                              <input
+                                value={veraInput[x.issue.number] || ""}
+                                onChange={e => setVeraInput(prev => ({ ...prev, [x.issue.number]: e.target.value }))}
+                                onKeyDown={e => e.key === "Enter" && sendToVera(x.issue, x)}
+                                placeholder="Ask Vera about this issue…"
+                                className="flex-1 text-xs bg-transparent outline-none text-[#111827] placeholder:text-gray-400"
+                              />
+                              <button
+                                onClick={() => sendToVera(x.issue, x)}
+                                disabled={!veraInput[x.issue.number]?.trim() || veraSending[x.issue.number]}
+                                className="text-xs font-semibold text-[#6366f1] hover:text-[#4f52cc] disabled:opacity-30 transition-colors px-1"
+                              >
+                                Send
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
 
