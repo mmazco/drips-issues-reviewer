@@ -176,40 +176,79 @@ function ReviewContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [issues, prefilledIssue]);
 
+  function simulatedReview(issue: GitHubIssue, key: number) {
+    const scored = summary?.scored.find(s => s.issue.number === key);
+    const fails = scored
+      ? Object.entries(scored.checks)
+          .filter(([, v]) => v.status === "fail")
+          .map(([k]) => {
+            const r = RUBRIC.find(r => r.key === k);
+            return r ? `Add ${r.label.toLowerCase()}` : k;
+          })
+      : [];
+    return {
+      verdict: (scored?.pct ?? 0) >= 65 ? "ready" : (scored?.pct ?? 0) >= 45 ? "needs-work" : "reject",
+      suggested_complexity: scored?.suggestedComplexity ?? "Medium",
+      complexity_reasoning: "Based on title and body length heuristics.",
+      rewritten_title: (scored?.pct ?? 0) < 65 ? `[Improved] ${issue.title}` : null,
+      missing: fails.length ? fails : ["Looks complete — no major gaps found."],
+      scope_concern: null,
+      suggestions: fails.length
+        ? `1. ${fails[0] ?? "Clarify the problem statement"}. 2. Add file paths pointing to relevant code. 3. Include acceptance criteria as a checklist.`
+        : "Issue is well-structured. Consider adding a milestone for Wave tracking.",
+      _simulated: true,
+    };
+  }
+
   async function runAIReview(issue: GitHubIssue) {
     const key = issue.number;
     if (aiReviews[key] || aiLoading[key]) return;
     setAiLoading(prev => ({ ...prev, [key]: true }));
 
-    const apiKey = process.env.NEXT_PUBLIC_ANTHROPIC_KEY;
-    if (!apiKey) {
-      await new Promise(r => setTimeout(r, 1400));
-      const scored = summary?.scored.find(s => s.issue.number === key);
-      const fails = scored ? Object.entries(scored.checks).filter(([, v]) => v.status === "fail").map(([k]) => { const r = RUBRIC.find(r => r.key === k); return r ? `Add ${r.label.toLowerCase()}` : k; }) : [];
-      setAiReviews(prev => ({ ...prev, [key]: { verdict: (scored?.pct ?? 0) >= 65 ? "ready" : (scored?.pct ?? 0) >= 45 ? "needs-work" : "reject", suggested_complexity: scored?.suggestedComplexity ?? "Medium", complexity_reasoning: "Based on title and body length heuristics.", rewritten_title: (scored?.pct ?? 0) < 65 ? `[Improved] ${issue.title}` : null, missing: fails.length ? fails : ["Looks complete — no major gaps found."], scope_concern: null, suggestions: fails.length ? `1. ${fails[0] ?? "Clarify the problem statement"}. 2. Add file paths pointing to relevant code. 3. Include acceptance criteria as a checklist.` : "Issue is well-structured. Consider adding a milestone for Wave tracking.", _simulated: true } }));
+    const scored = summary?.scored.find(s => s.issue.number === key);
+    if (!scored) {
+      setAiReviews(prev => ({ ...prev, [key]: simulatedReview(issue, key) }));
       setAiLoading(prev => ({ ...prev, [key]: false }));
       return;
     }
 
-    const prompt = `You are reviewing a GitHub issue for the Drips Wave open-source bounty program. Respond in strict JSON only.
-
-Issue title: ${issue.title}
-Issue body: """${issue.body || "(empty body)"}"""
-Labels: ${(issue.labels || []).map((l: { name: string } | string) => (typeof l === "string" ? l : l.name)).join(", ") || "none"}
-
-Return JSON: { "verdict": "ready"|"needs-work"|"reject", "suggested_complexity": "Trivial"|"Medium"|"High", "complexity_reasoning": "one sentence", "rewritten_title": "better title or null", "missing": ["max 5 bullets"], "scope_concern": "string or null", "suggestions": "2-3 fixes" }`;
-
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/vera/feedback", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": apiKey },
-        body: JSON.stringify({ model: "claude-opus-4-7", max_tokens: 1000, messages: [{ role: "user", content: prompt }] }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          issue: {
+            number: issue.number,
+            title: issue.title,
+            body: issue.body,
+            html_url: issue.html_url,
+            labels: issue.labels,
+            milestone: issue.milestone,
+          },
+          scorecard: {
+            pct: scored.pct,
+            grade: scored.grade,
+            suggestedComplexity: scored.suggestedComplexity,
+            checks: scored.checks,
+          },
+        }),
       });
+
+      if (!res.ok) {
+        // Vera unreachable or returned an error — fall back to the deterministic
+        // rubric-based review so the UI still produces useful output.
+        setAiReviews(prev => ({ ...prev, [key]: simulatedReview(issue, key) }));
+        return;
+      }
+
       const data = await res.json();
-      const text = data.content?.find((b: { type: string; text: string }) => b.type === "text")?.text || "";
-      setAiReviews(prev => ({ ...prev, [key]: JSON.parse(text.replace(/```json|```/g, "").trim()) }));
-    } catch (e) {
-      setAiReviews(prev => ({ ...prev, [key]: { error: (e as Error).message } }));
+      if (data?.review && !("error" in data.review)) {
+        setAiReviews(prev => ({ ...prev, [key]: data.review }));
+      } else {
+        setAiReviews(prev => ({ ...prev, [key]: simulatedReview(issue, key) }));
+      }
+    } catch {
+      setAiReviews(prev => ({ ...prev, [key]: simulatedReview(issue, key) }));
     } finally {
       setAiLoading(prev => ({ ...prev, [key]: false }));
     }
