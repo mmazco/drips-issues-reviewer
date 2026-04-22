@@ -133,15 +133,27 @@ export async function POST(request: Request) {
   const token = process.env.VERA_API_TOKEN;
   if (token) headers['authorization'] = `Bearer ${token}`;
 
+  // Use the session-based endpoint (`/api/sessions/:id/turn`) rather than
+  // the legacy stateless `/api/agent/turn`. Upstream the legacy route has a
+  // TypeBox `Intersect` schema bug that rejects every property; the session
+  // route uses a single clean schema. We generate a fresh sessionId per
+  // request so turns stay independent, and delete the snapshot afterwards
+  // so state doesn't accumulate on disk.
+  const sessionId =
+    body.sessionId?.trim() || `drips-${Math.random().toString(36).slice(2, 10)}`;
+  const agentName = body.agentName?.trim() || 'main';
+  const veraBase = veraUrl.replace(/\/$/, '');
+  const turnUrl = `${veraBase}/api/sessions/${encodeURIComponent(sessionId)}/turn`;
+  const cleanupUrl = `${veraBase}/api/sessions/${encodeURIComponent(sessionId)}`;
+
   const veraPayload: Record<string, unknown> = {
     message: buildPrompt(body),
+    agentName,
   };
-  if (body.sessionId) veraPayload.sessionId = body.sessionId;
-  if (body.agentName) veraPayload.agentName = body.agentName;
 
   let veraRes: Response;
   try {
-    veraRes = await fetch(`${veraUrl.replace(/\/$/, '')}/api/agent/turn`, {
+    veraRes = await fetch(turnUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(veraPayload),
@@ -168,7 +180,38 @@ export async function POST(request: Request) {
     model?: string;
   };
 
-  const review = extractJson(veraData.output ?? '');
+  // Fire-and-forget cleanup so /tmp doesn't fill with one-shot snapshots.
+  // We intentionally don't await — the response to the client shouldn't
+  // block on cleanup, and a failed delete is recoverable on Vera's side.
+  if (!body.sessionId) {
+    fetch(cleanupUrl, { method: 'DELETE', headers }).catch(() => {});
+  }
+
+  const output = veraData.output ?? '';
+
+  // Vera swallows Anthropic/provider errors (e.g. 400 credit_balance_low)
+  // into HTTP 200 with empty `output`. Treat that as a failure so the UI
+  // falls back to the deterministic rubric review instead of rendering
+  // a blank card.
+  if (output.trim() === '') {
+    return NextResponse.json(
+      {
+        error:
+          'Vera returned empty output — likely an upstream LLM error (check credits, model availability, or vera-api logs)',
+        durationMs: veraData.durationMs,
+        sessionId: veraData.sessionId,
+      },
+      { status: 502 },
+    );
+  }
+
+  const review = extractJson(output);
+  if ('error' in review) {
+    return NextResponse.json(
+      { error: review.error, details: review.raw.slice(0, 2000) },
+      { status: 502 },
+    );
+  }
 
   return NextResponse.json({
     review,

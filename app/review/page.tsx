@@ -596,13 +596,13 @@ function ReviewContent() {
                           </div>
                           {!ai && !aiLoading[x.issue.number] && (
                             <button onClick={() => runAIReview(x.issue)} className="text-xs font-semibold text-[#6366f1] hover:text-[#4f52cc] transition-colors">
-                              Run AI review
+                              Run Review
                             </button>
                           )}
                         </div>
 
                         {aiLoading[x.issue.number] && (
-                          <div className="text-xs text-gray-400 animate-pulse bg-white border border-gray-100 rounded-xl px-4 py-3">Claude Opus 4.7 is reviewing…</div>
+                          <div className="text-xs text-gray-400 animate-pulse bg-white border border-gray-100 rounded-xl px-4 py-3">Vera is reviewing…</div>
                         )}
 
                         {ai && !(ai as { error?: string }).error && (() => {
