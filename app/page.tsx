@@ -175,7 +175,7 @@ export default function HomePage() {
           Optimize maintainers repo<br />issues per Wave batch.
         </h1>
         <p className="text-[#111827] text-base leading-relaxed mb-8 max-w-lg mx-auto">
-          Review and score maintainers GitHub issues and provide QA feedback all in app.
+          Review and score maintainers GitHub issues and provide QA feedback.
         </p>
 
         {/* Search card */}

@@ -5,7 +5,7 @@ import { useGitHubAuth } from "@/lib/useGitHubAuth";
 
 export default function Nav() {
   const pathname = usePathname();
-  const { isConnected, username } = useGitHubAuth();
+  const { isConnected, username, loading: authLoading } = useGitHubAuth();
 
   const links = [
     { href: "/review", label: "Review" },
@@ -39,7 +39,13 @@ export default function Nav() {
 
           <div className="w-px h-5 bg-gray-200 mx-1.5" />
 
-          {isConnected ? (
+          {authLoading ? (
+            // Neutral placeholder while we read cookies — same width as
+            // the signed-in pill so the layout doesn't jump.
+            <span className="text-xs text-transparent bg-gray-100 px-3 py-1.5 rounded-lg select-none animate-pulse">
+              ⬡ checking…
+            </span>
+          ) : isConnected ? (
             <div className="flex items-center gap-2">
               <span className="text-xs text-[#111827] bg-gray-100 px-3 py-1.5 rounded-lg">
                 ⬡ @{username}

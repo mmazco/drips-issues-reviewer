@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { summarizeRepo, RUBRIC } from "@/lib/scoring";
 import type { GitHubIssue, ScoredIssue, RepoSummary } from "@/lib/scoring";
-import { fetchAllIssues, fetchRepoMeta, parseRepoUrl, postGitHubComment, buildVeraComment } from "@/lib/github";
+import { fetchAllIssues, fetchRepoMeta, parseRepoUrl, postGitHubComment, buildVeraComment, createGitHubIssue } from "@/lib/github";
 import { useGitHubAuth } from "@/lib/useGitHubAuth";
 
 const STATUS_COLORS = { pass: "#16a34a", warn: "#d97706", fail: "#dc2626" };
@@ -19,6 +19,17 @@ function complexityBadge(c: string) {
   if (c === "Trivial") return "bg-green-50 text-green-700";
   if (c === "Medium") return "bg-yellow-50 text-yellow-700";
   return "bg-red-50 text-red-700";
+}
+
+// Drips Wave teams label issues they want included in the Wave with a
+// "Stellar Wave" label. We pull all open issues so maintainers can see
+// the full picture, but flag the Wave-tagged ones since those are the
+// ones Drips actually scores at https://www.drips.network/wave/stellar.
+function isWaveTagged(issue: GitHubIssue): boolean {
+  return (issue.labels || []).some(l => {
+    const name = (typeof l === "string" ? l : l.name).toLowerCase();
+    return name === "stellar wave";
+  });
 }
 
 function saveToHistory(repoUrl: string, repoMeta: { full_name: string; description: string }, summary: RepoSummary) {
@@ -41,24 +52,13 @@ function saveToHistory(repoUrl: string, repoMeta: { full_name: string; descripti
   localStorage.setItem("drips-review-history", JSON.stringify(all.slice(0, 30)));
 }
 
-interface VeraMessage {
-  role: "user" | "vera";
-  text: string;
-  commentDraft?: string;
-}
-
-function getFailAdvice(label: string): string {
-  const m: Record<string, string> = {
-    Title: "Use 5+ words describing the specific change needed",
-    Context: "Expand the body to 200+ characters explaining the why",
-    "File Paths": "Reference at least 2 specific files in the codebase",
-    Scope: "Reduce to a single focus area",
-    "Setup Steps": "Add a code block with setup or repro commands",
-    Acceptance: "Add a checklist of what a successful PR must include",
-    Labels: "Apply at least 2 labels",
-    Milestone: "Attach to a Wave milestone",
-  };
-  return m[label] || "Add more detail";
+interface RepoCheckResult {
+  mode: "docs" | "setup";
+  verdict: "good" | "needs-work" | "broken";
+  summary: string;
+  findings: string[];
+  issue_title: string | null;
+  issue_body: string | null;
 }
 
 interface VeraReview {
@@ -75,10 +75,15 @@ interface VeraReview {
 }
 
 // Build the QA comment textarea contents from a Vera review. Prefers the
-// markdown `comment_draft` Vera returns via the drips-qa-feedback skill;
-// falls back to the local template if Vera didn't include one (offline
-// fallback, old simulated reviews, etc.).
-function draftCommentFrom(review: VeraReview | undefined, issue: GitHubIssue, scored: ScoredIssue): string {
+// markdown `comment_draft` the agent returns (per the system prompt in
+// lib/prompts.ts); falls back to the local template if the model didn't
+// include one (e.g. on parse error or rate-limit fallback).
+function draftCommentFrom(
+  review: VeraReview | undefined,
+  issue: GitHubIssue,
+  scored: ScoredIssue,
+  reviewerUsername?: string | null,
+): string {
   if (review?.comment_draft && review.comment_draft.trim()) return review.comment_draft;
 
   const missing =
@@ -93,49 +98,14 @@ function draftCommentFrom(review: VeraReview | undefined, issue: GitHubIssue, sc
   const suggestions =
     review?.suggestions || "Add file paths, acceptance criteria, and setup steps per the Drips rubric.";
   const complexity = review?.suggested_complexity || scored.suggestedComplexity;
-  return buildVeraComment(issue.title, missing, suggestions, complexity);
-}
-
-function generateVeraResponse(message: string, scored: ScoredIssue): { text: string; commentDraft?: string } {
-  const fails = Object.entries(scored.checks).filter(([, v]) => v.status === "fail");
-  const failLabels = fails.map(([k]) => RUBRIC.find(r => r.key === k)?.label || k);
-  const lower = message.toLowerCase();
-
-  if (/write|draft|comment|feedback|post/.test(lower)) {
-    const missing = failLabels.length ? failLabels.map(l => `Missing ${l}`) : ["No critical gaps — issue looks well-structured"];
-    const suggestions = failLabels.length
-      ? `1. ${getFailAdvice(failLabels[0] ?? "Title")}. 2. Add file paths to guide contributors. 3. Include acceptance criteria as a checklist.`
-      : "Consider adding a milestone and more specific acceptance criteria for contributors.";
-    const draft = buildVeraComment(scored.issue.title, missing, suggestions, scored.suggestedComplexity);
-    return { text: `Here's a draft QA comment for issue #${scored.issue.number}. Click "Use as feedback" to load it into the composer.`, commentDraft: draft };
-  }
-
-  if (/miss|wrong|what|problem|fail|gap/.test(lower)) {
-    if (!failLabels.length) return { text: `Issue #${scored.issue.number} passes all rubric checks at ${scored.pct}% (grade ${scored.grade}). No critical gaps — it's Wave-ready.` };
-    const lines = failLabels.map(l => `• **${l}**: ${getFailAdvice(l)}`).join("\n");
-    return { text: `Issue #${scored.issue.number} scored ${scored.pct}% (grade ${scored.grade}). What's missing:\n\n${lines}\n\nType "write feedback" to draft a comment.` };
-  }
-
-  if (/complex|tier|point|bounty/.test(lower)) {
-    const pts = scored.suggestedComplexity === "Trivial" ? 100 : scored.suggestedComplexity === "Medium" ? 150 : 200;
-    return { text: `Suggested tier: **${scored.suggestedComplexity}** (${pts} pts). Based on title keywords and body length. Maintainers set the final tier in the Drips dashboard.` };
-  }
-
-  if (/grade|score|rating/.test(lower)) {
-    return { text: `Issue #${scored.issue.number} scored **${scored.pct}%** — grade **${scored.grade}**. ${scored.grade === "A" || scored.grade === "B" ? "Looking good for the Wave." : "Needs some work before contributors can pick it up confidently."}` };
-  }
-
-  if (failLabels.length) {
-    return { text: `Issue #${scored.issue.number} scored ${scored.pct}% (${scored.grade}). Main gaps: ${failLabels.join(", ")}. Type "write feedback" to draft a QA comment, or ask me what's missing for detail.` };
-  }
-  return { text: `Issue #${scored.issue.number} looks solid at ${scored.pct}% (${scored.grade}). No major gaps. Ready for Wave contributors.` };
+  return buildVeraComment(issue.title, missing, suggestions, complexity, reviewerUsername ?? undefined);
 }
 
 function ReviewContent() {
   const searchParams = useSearchParams();
   const prefilledUrl = searchParams.get("url") || "";
   const prefilledIssue = searchParams.get("issue");
-  const { token, isConnected, username } = useGitHubAuth();
+  const { token, isConnected, username, loading: authLoading } = useGitHubAuth();
 
   const [repoUrl, setRepoUrl] = useState(prefilledUrl || "");
   const [loading, setLoading] = useState(false);
@@ -143,25 +113,35 @@ function ReviewContent() {
   const [issues, setIssues] = useState<GitHubIssue[]>([]);
   const [repoMeta, setRepoMeta] = useState<{ full_name: string; description: string; stargazers_count: number; forks_count: number; language: string } | null>(null);
   const [expandedIssues, setExpandedIssues] = useState<Set<number>>(new Set());
-  const [filter, setFilter] = useState<"all" | "failing" | "passing">("all");
+  const [filter, setFilter] = useState<"all" | "wave" | "failing" | "passing">("all");
   const [aiReviews, setAiReviews] = useState<Record<number, Record<string, unknown>>>({});
   const [aiLoading, setAiLoading] = useState<Record<number, boolean>>({});
   const [qaComments, setQaComments] = useState<Record<number, string>>({});
   const [qaPosting, setQaPosting] = useState<Record<number, boolean>>({});
   const [qaPosted, setQaPosted] = useState<Record<number, boolean>>({});
-  const [veraChats, setVeraChats] = useState<Record<number, VeraMessage[]>>({});
-  const [veraInput, setVeraInput] = useState<Record<number, string>>({});
-  const [veraSending, setVeraSending] = useState<Record<number, boolean>>({});
-  const [refineOpen, setRefineOpen] = useState<Record<number, boolean>>({});
+  // Repo-level checks (docs / setup) — keyed by mode since there's a single
+  // active repo per page session. Cleared when repoUrl changes via runReview.
+  const [repoChecks, setRepoChecks] = useState<Record<"docs" | "setup", RepoCheckResult | undefined>>({ docs: undefined, setup: undefined });
+  const [repoCheckLoading, setRepoCheckLoading] = useState<Record<"docs" | "setup", boolean>>({ docs: false, setup: false });
+  const [repoCheckBodies, setRepoCheckBodies] = useState<Record<"docs" | "setup", string>>({ docs: "", setup: "" });
+  const [repoCheckTitles, setRepoCheckTitles] = useState<Record<"docs" | "setup", string>>({ docs: "", setup: "" });
+  const [repoCheckPosting, setRepoCheckPosting] = useState<Record<"docs" | "setup", boolean>>({ docs: false, setup: false });
+  const [repoCheckPosted, setRepoCheckPosted] = useState<Record<"docs" | "setup", { number: number; html_url: string } | undefined>>({ docs: undefined, setup: undefined });
   const autoRan = useRef(false);
 
   const summary = useMemo(() => summarizeRepo(issues), [issues]);
   const visibleIssues = useMemo(() => {
     if (!summary) return [];
+    if (filter === "wave") return summary.scored.filter(s => isWaveTagged(s.issue));
     if (filter === "failing") return summary.scored.filter(s => s.grade === "C" || s.grade === "D");
     if (filter === "passing") return summary.scored.filter(s => s.grade === "A" || s.grade === "B");
     return summary.scored;
   }, [summary, filter]);
+
+  const waveTaggedCount = useMemo(
+    () => (summary ? summary.scored.filter(s => isWaveTagged(s.issue)).length : 0),
+    [summary],
+  );
 
   function toggleExpand(n: number) {
     setExpandedIssues(prev => {
@@ -174,6 +154,10 @@ function ReviewContent() {
   async function runReview(urlOverride?: string) {
     const targetUrl = urlOverride ?? repoUrl;
     setError(""); setIssues([]); setAiReviews({}); setExpandedIssues(new Set());
+    setRepoChecks({ docs: undefined, setup: undefined });
+    setRepoCheckBodies({ docs: "", setup: "" });
+    setRepoCheckTitles({ docs: "", setup: "" });
+    setRepoCheckPosted({ docs: undefined, setup: undefined });
     const parsed = parseRepoUrl(targetUrl);
     if (!parsed) { setError("Could not parse repo URL. Use https://github.com/owner/repo"); return; }
     setLoading(true);
@@ -240,7 +224,7 @@ function ReviewContent() {
   function applyReview(issue: GitHubIssue, scored: ScoredIssue, review: VeraReview) {
     const key = issue.number;
     setAiReviews(prev => ({ ...prev, [key]: review as unknown as Record<string, unknown> }));
-    setQaComments(prev => (prev[key] ? prev : { ...prev, [key]: draftCommentFrom(review, issue, scored) }));
+    setQaComments(prev => (prev[key] ? prev : { ...prev, [key]: draftCommentFrom(review, issue, scored, username) }));
   }
 
   async function runAIReview(issue: GitHubIssue) {
@@ -273,6 +257,7 @@ function ReviewContent() {
             suggestedComplexity: scored.suggestedComplexity,
             checks: scored.checks,
           },
+          reviewer: username ? { username } : undefined,
         }),
       });
 
@@ -292,12 +277,6 @@ function ReviewContent() {
     } finally {
       setAiLoading(prev => ({ ...prev, [key]: false }));
     }
-  }
-
-  function prepareQAComment(issue: GitHubIssue, scored: ScoredIssue) {
-    if (qaComments[issue.number]) return;
-    const review = aiReviews[issue.number] as VeraReview | undefined;
-    setQaComments(prev => ({ ...prev, [issue.number]: draftCommentFrom(review, issue, scored) }));
   }
 
   async function submitQAComment(issue: GitHubIssue) {
@@ -320,19 +299,76 @@ function ReviewContent() {
     }
   }
 
-  async function sendToVera(issue: GitHubIssue, scored: ScoredIssue) {
-    const n = issue.number;
-    const msg = (veraInput[n] || "").trim();
-    if (!msg) return;
-    const userMsg: VeraMessage = { role: "user", text: msg };
-    setVeraChats(prev => ({ ...prev, [n]: [...(prev[n] || []), userMsg] }));
-    setVeraInput(prev => ({ ...prev, [n]: "" }));
-    setVeraSending(prev => ({ ...prev, [n]: true }));
-    await new Promise(r => setTimeout(r, 800));
-    const response = generateVeraResponse(msg, scored);
-    const veraMsg: VeraMessage = { role: "vera", text: response.text, commentDraft: response.commentDraft };
-    setVeraChats(prev => ({ ...prev, [n]: [...(prev[n] || []), veraMsg] }));
-    setVeraSending(prev => ({ ...prev, [n]: false }));
+  async function runRepoCheck(mode: "docs" | "setup") {
+    if (repoCheckLoading[mode] || repoChecks[mode]) return;
+    const parsed = parseRepoUrl(repoUrl);
+    if (!parsed) return;
+    setRepoCheckLoading(prev => ({ ...prev, [mode]: true }));
+
+    try {
+      const res = await fetch("/api/vera/repo-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          owner: parsed.owner,
+          repo: parsed.repo,
+          mode,
+          reviewer: username ? { username } : undefined,
+          githubToken: token || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        alert(`${mode} review failed: ${text.slice(0, 200)}`);
+        return;
+      }
+
+      const data = await res.json();
+      if (data?.review) {
+        const review = data.review as RepoCheckResult;
+        setRepoChecks(prev => ({ ...prev, [mode]: review }));
+        if (review.issue_title) setRepoCheckTitles(prev => ({ ...prev, [mode]: review.issue_title || "" }));
+        if (review.issue_body) setRepoCheckBodies(prev => ({ ...prev, [mode]: review.issue_body || "" }));
+      }
+    } catch (e) {
+      alert(`${mode} review failed: ${(e as Error).message}`);
+    } finally {
+      setRepoCheckLoading(prev => ({ ...prev, [mode]: false }));
+    }
+  }
+
+  async function submitRepoCheckIssue(mode: "docs" | "setup") {
+    const parsed = parseRepoUrl(repoUrl);
+    if (!parsed) return;
+    const title = repoCheckTitles[mode]?.trim();
+    const body = repoCheckBodies[mode]?.trim();
+    if (!title || !body) return;
+
+    setRepoCheckPosting(prev => ({ ...prev, [mode]: true }));
+    if (!token) {
+      // Simulated post — same convention as the issue-comment flow.
+      await new Promise(r => setTimeout(r, 900));
+      setRepoCheckPosted(prev => ({ ...prev, [mode]: { number: 0, html_url: "" } }));
+      setRepoCheckPosting(prev => ({ ...prev, [mode]: false }));
+      return;
+    }
+
+    try {
+      const created = await createGitHubIssue(parsed.owner, parsed.repo, title, body, token);
+      setRepoCheckPosted(prev => ({ ...prev, [mode]: { number: created.number, html_url: created.html_url } }));
+    } catch (e) {
+      alert(`Failed to create issue: ${(e as Error).message}`);
+    } finally {
+      setRepoCheckPosting(prev => ({ ...prev, [mode]: false }));
+    }
+  }
+
+  function discardRepoCheck(mode: "docs" | "setup") {
+    setRepoChecks(prev => ({ ...prev, [mode]: undefined }));
+    setRepoCheckBodies(prev => ({ ...prev, [mode]: "" }));
+    setRepoCheckTitles(prev => ({ ...prev, [mode]: "" }));
+    setRepoCheckPosted(prev => ({ ...prev, [mode]: undefined }));
   }
 
   return (
@@ -355,7 +391,11 @@ function ReviewContent() {
           className="flex-1 text-sm bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1] text-[#111827] placeholder:text-gray-400"
         />
         <div className="flex items-center gap-2">
-          {isConnected ? (
+          {authLoading ? (
+            <span className="flex items-center gap-1.5 text-xs text-transparent bg-gray-100 px-3 py-2 rounded-xl select-none animate-pulse">
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />checking…
+            </span>
+          ) : isConnected ? (
             <span className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-100 px-3 py-2 rounded-xl">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500" />@{username}
             </span>
@@ -385,12 +425,34 @@ function ReviewContent() {
         </div>
       )}
 
-      {/* Empty state */}
-      {!summary && !loading && !error && (
+      {/* Empty state — no repo loaded yet */}
+      {!summary && !repoMeta && !loading && !error && (
         <div className="border border-dashed border-black/20 rounded-2xl p-14 text-center">
           <div className="text-gray-300 text-3xl mb-3">◎</div>
           <div className="text-sm font-medium text-gray-700">Paste a GitHub repo URL above</div>
           <div className="text-xs text-gray-600 mt-1.5">Scoring runs locally — no auth needed to read public repos.</div>
+        </div>
+      )}
+
+      {/* No-open-issues state — the fetch succeeded but the repo has no
+          open issues to score. Common when a maintainer has addressed
+          all feedback (e.g. MañanaSeguro). */}
+      {!summary && repoMeta && !loading && !error && (
+        <div className="border border-black rounded-2xl p-8 text-center space-y-3">
+          <div className="text-3xl">✓</div>
+          <div className="text-sm font-semibold text-[#111827]">{repoMeta.full_name}</div>
+          <div className="text-sm text-gray-700">No open issues to review.</div>
+          <div className="text-xs text-gray-600 max-w-md mx-auto">
+            All issues on this repo are closed. If the maintainer is mid-Wave, this often means they&rsquo;ve addressed prior feedback and need to open new tasks.
+          </div>
+          <a
+            href={`https://github.com/${repoMeta.full_name}/issues?q=is%3Aissue`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs text-[#6366f1] hover:underline"
+          >
+            View all issues on GitHub ↗
+          </a>
         </div>
       )}
 
@@ -407,6 +469,22 @@ function ReviewContent() {
                   <span className="text-xs text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md">⑂ {repoMeta.forks_count}</span>
                   {repoMeta.language && <span className="text-xs text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md">{repoMeta.language}</span>}
                   <span className="text-xs text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md">{issues.length} issues</span>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-md font-medium ${
+                      waveTaggedCount > 0
+                        ? "bg-indigo-50 text-[#6366f1]"
+                        : "bg-amber-50 text-amber-700"
+                    }`}
+                    title={
+                      waveTaggedCount > 0
+                        ? "Issues tagged for the Stellar Wave by the maintainer"
+                        : "No issues tagged 'Stellar Wave' — maintainer needs to add the label"
+                    }
+                  >
+                    {waveTaggedCount > 0
+                      ? `${waveTaggedCount} tagged for Wave`
+                      : "0 tagged for Wave"}
+                  </span>
                 </div>
               </div>
               <div className="text-right flex-shrink-0">
@@ -433,16 +511,21 @@ function ReviewContent() {
           </div>
 
           {/* Filter */}
-          <div className="flex items-center gap-1.5">
-            {(["all", "failing", "passing"] as const).map(f => {
-              const count = f === "all" ? summary.scored.length : f === "failing" ? summary.scored.filter(s => s.grade === "C" || s.grade === "D").length : summary.scored.filter(s => s.grade === "A" || s.grade === "B").length;
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {(["all", "wave", "failing", "passing"] as const).map(f => {
+              const count =
+                f === "all" ? summary.scored.length
+                : f === "wave" ? waveTaggedCount
+                : f === "failing" ? summary.scored.filter(s => s.grade === "C" || s.grade === "D").length
+                : summary.scored.filter(s => s.grade === "A" || s.grade === "B").length;
+              const label = f === "wave" ? "wave-tagged" : f;
               return (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
                   className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${filter === f ? "bg-[#6366f1] text-white font-medium" : "text-gray-500 border border-gray-200 hover:border-[#6366f1] hover:text-[#6366f1]"}`}
                 >
-                  {f} ({count})
+                  {label} ({count})
                 </button>
               );
             })}
@@ -461,7 +544,6 @@ function ReviewContent() {
 
             {visibleIssues.map((x, idx) => {
               const isOpen = expandedIssues.has(x.issue.number);
-              const chat = veraChats[x.issue.number] || [];
               const ai = aiReviews[x.issue.number];
               const needsFeedback = x.grade === "C" || x.grade === "D";
 
@@ -476,6 +558,14 @@ function ReviewContent() {
                     <span className="flex-1 min-w-0 flex items-center gap-2">
                       <span className={`text-xs font-bold flex-shrink-0 ${gradeStyle(x.grade)}`}>{x.grade}</span>
                       <span className="text-sm text-[#111827] truncate">{x.issue.title}</span>
+                      {isWaveTagged(x.issue) && (
+                        <span
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-50 text-[#6366f1] flex-shrink-0"
+                          title="Tagged for the Stellar Wave by the maintainer"
+                        >
+                          Stellar Wave
+                        </span>
+                      )}
                     </span>
                     <span className={`text-xs font-semibold w-8 text-center flex-shrink-0 ${gradeStyle(x.grade)}`}>{x.pct}</span>
                     <span className="flex gap-0.5 flex-shrink-0 w-[7rem]">
@@ -615,7 +705,7 @@ function ReviewContent() {
                                     const scoredNow = summary?.scored.find(s => s.issue.number === x.issue.number);
                                     if (!scoredNow) return;
                                     const review = aiReviews[x.issue.number] as VeraReview | undefined;
-                                    setQaComments(prev => ({ ...prev, [x.issue.number]: draftCommentFrom(review, x.issue, scoredNow) }));
+                                    setQaComments(prev => ({ ...prev, [x.issue.number]: draftCommentFrom(review, x.issue, scoredNow, username) }));
                                   }}
                                   className="text-xs text-gray-400 hover:text-[#6366f1] transition-colors"
                                   title="Restore Vera's original draft (discards your edits)"
@@ -651,65 +741,111 @@ function ReviewContent() {
                         </div>
                       )}
 
-                      {/* 3. Refine with Vera — collapsed disclosure */}
-                      <div>
-                        <button
-                          onClick={() => setRefineOpen(prev => ({ ...prev, [x.issue.number]: !prev[x.issue.number] }))}
-                          className="text-xs text-gray-500 hover:text-[#6366f1] transition-colors flex items-center gap-1.5"
-                        >
-                          <span>{refineOpen[x.issue.number] ? "▾" : "▸"}</span>
-                          <span>Refine with Vera</span>
-                          {chat.length > 0 && <span className="text-gray-400">({chat.length})</span>}
-                        </button>
+                      {/* 3. More checks — repo-level docs / setup reviews. Each one
+                          opens a NEW issue on the repo (not a comment on this issue).
+                          Lives under each issue panel for momentum: "while you're here,
+                          want to also flag the repo's docs?" */}
+                      {ai && (
+                        <div>
+                          <div className="text-xs text-gray-700 font-semibold uppercase tracking-wide mb-2">More checks</div>
+                          <div className="flex gap-2 flex-wrap">
+                            {(["docs", "setup"] as const).map(mode => {
+                              const result = repoChecks[mode];
+                              const loading = repoCheckLoading[mode];
+                              const label = mode === "docs" ? "Review docs" : "Check setup";
+                              return (
+                                <button
+                                  key={mode}
+                                  onClick={() => runRepoCheck(mode)}
+                                  disabled={loading || !!result}
+                                  className="text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 hover:border-[#6366f1] hover:text-[#6366f1] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-[#111827] bg-white"
+                                >
+                                  {loading ? `${label}…` : label}
+                                </button>
+                              );
+                            })}
+                          </div>
 
-                        {refineOpen[x.issue.number] && (
-                          <div className="bg-white border border-black rounded-xl overflow-hidden mt-2">
-                            <div className="px-4 py-3 space-y-3 min-h-[60px] max-h-64 overflow-y-auto">
-                              {chat.length === 0 && (
-                                <div className="text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2.5 leading-relaxed">
-                                  Ask follow-up questions about this review, or say <span className="font-medium text-gray-700">&ldquo;write feedback&rdquo;</span> to have Vera propose a replacement comment draft.
+                          {/* Result cards — one per mode, only for the active issue
+                              panel. Repo-level data so all panels see the same result. */}
+                          {(["docs", "setup"] as const).map(mode => {
+                            const result = repoChecks[mode];
+                            if (!result) return null;
+                            const posted = repoCheckPosted[mode];
+                            const verdictColor =
+                              result.verdict === "good" ? "bg-green-50 text-green-700"
+                              : result.verdict === "needs-work" ? "bg-yellow-50 text-yellow-700"
+                              : "bg-red-50 text-red-700";
+                            const modeLabel = mode === "docs" ? "Documentation review" : "Setup review";
+
+                            return (
+                              <div key={mode} className="mt-3 bg-white border border-black rounded-xl p-4 space-y-3 text-sm">
+                                <div className="flex items-center justify-between">
+                                  <div className="text-xs text-gray-700 font-semibold uppercase tracking-wide">{modeLabel}</div>
+                                  <button onClick={() => discardRepoCheck(mode)} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Dismiss</button>
                                 </div>
-                              )}
-                              {chat.map((msg, i) => (
-                                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                                  <div className={`text-xs px-3 py-2 rounded-xl max-w-[85%] leading-relaxed ${msg.role === "user" ? "bg-[#6366f1] text-white" : "bg-gray-100 text-gray-700"}`}>
-                                    <div className="whitespace-pre-wrap">{msg.text}</div>
-                                    {msg.commentDraft && (
-                                      <button
-                                        onClick={() => { setQaComments(prev => ({ ...prev, [x.issue.number]: msg.commentDraft! })); }}
-                                        className="mt-2 text-xs font-semibold bg-white text-[#6366f1] px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors block w-full text-left"
-                                      >
-                                        Use this draft in the comment box above →
-                                      </button>
+                                <div className="flex gap-2 flex-wrap">
+                                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${verdictColor}`}>{result.verdict}</span>
+                                </div>
+                                <p className="text-xs text-[#111827]">{result.summary}</p>
+                                {result.findings.length > 0 && (
+                                  <div>
+                                    <div className="text-xs text-gray-600 mb-1 font-medium">Findings</div>
+                                    <ul className="text-xs text-gray-800 space-y-0.5 list-disc list-inside">
+                                      {result.findings.map((f, i) => <li key={i}>{f}</li>)}
+                                    </ul>
+                                  </div>
+                                )}
+
+                                {/* Issue draft — editable title + body, only when there's something to post */}
+                                {result.verdict !== "good" && (result.issue_title || result.issue_body) && (
+                                  <div className="space-y-2 pt-2 border-t border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                      <div className="text-xs text-gray-600 font-medium">Open as new issue</div>
+                                      {posted && (
+                                        posted.html_url
+                                          ? <a href={posted.html_url} target="_blank" rel="noreferrer" className="text-xs text-green-600 font-medium hover:underline">✓ Created — issue #{posted.number} ↗</a>
+                                          : <span className="text-xs text-green-600 font-medium">✓ Simulated</span>
+                                      )}
+                                    </div>
+                                    {posted ? (
+                                      <>
+                                        <div className="text-xs text-gray-600 italic">{repoCheckTitles[mode]}</div>
+                                        <div className="bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-xs font-mono text-[#111827] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">{repoCheckBodies[mode]}</div>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <input
+                                          value={repoCheckTitles[mode]}
+                                          onChange={e => setRepoCheckTitles(prev => ({ ...prev, [mode]: e.target.value }))}
+                                          placeholder="Issue title"
+                                          className="w-full text-xs bg-white border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#6366f1]"
+                                        />
+                                        <textarea
+                                          value={repoCheckBodies[mode]}
+                                          onChange={e => setRepoCheckBodies(prev => ({ ...prev, [mode]: e.target.value }))}
+                                          rows={8}
+                                          className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono leading-relaxed focus:outline-none focus:border-[#6366f1] resize-y"
+                                        />
+                                        <div className="flex items-center gap-2">
+                                          {!isConnected && <span className="text-xs text-gray-600 flex-1">⚡ Simulated — <a href="/api/auth/github" className="text-[#6366f1] hover:underline">connect GitHub</a> to open for real</span>}
+                                          <button
+                                            onClick={() => submitRepoCheckIssue(mode)}
+                                            disabled={repoCheckPosting[mode] || !repoCheckTitles[mode]?.trim() || !repoCheckBodies[mode]?.trim()}
+                                            className="ml-auto text-xs font-semibold bg-[#6366f1] text-white px-4 py-2 rounded-lg hover:bg-[#4f52cc] disabled:opacity-50 transition-colors"
+                                          >
+                                            {repoCheckPosting[mode] ? "Opening…" : isConnected ? "Open issue on GitHub" : "Simulate open ⚡"}
+                                          </button>
+                                        </div>
+                                      </>
                                     )}
                                   </div>
-                                </div>
-                              ))}
-                              {veraSending[x.issue.number] && (
-                                <div className="flex justify-start">
-                                  <div className="text-xs text-gray-400 bg-gray-100 px-3 py-2 rounded-xl animate-pulse">Vera is typing…</div>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 px-3 py-2.5 border-t border-gray-100">
-                              <input
-                                value={veraInput[x.issue.number] || ""}
-                                onChange={e => setVeraInput(prev => ({ ...prev, [x.issue.number]: e.target.value }))}
-                                onKeyDown={e => e.key === "Enter" && sendToVera(x.issue, x)}
-                                placeholder="Ask Vera about this issue…"
-                                className="flex-1 text-xs bg-transparent outline-none text-[#111827] placeholder:text-gray-400"
-                              />
-                              <button
-                                onClick={() => sendToVera(x.issue, x)}
-                                disabled={!veraInput[x.issue.number]?.trim() || veraSending[x.issue.number]}
-                                className="text-xs font-semibold text-[#6366f1] hover:text-[#4f52cc] disabled:opacity-30 transition-colors px-1"
-                              >
-                                Send
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
 
                     </div>
                   )}
