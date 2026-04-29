@@ -171,7 +171,7 @@ export default function HomePage() {
           <span className="w-1.5 h-1.5 rounded-full bg-[#6366f1]" />
           Drips Wave · Internal tool
         </div>
-        <h1 className="text-3xl sm:text-[2.5rem] font-bold text-[#111827] tracking-tight leading-tight mb-3">
+        <h1 className="text-2xl sm:text-[2.5rem] font-bold text-[#111827] tracking-tight leading-tight mb-3">
           Optimize maintainers repo issues per Wave batch.
         </h1>
         <p className="text-[#111827] text-sm sm:text-base leading-relaxed mb-8 max-w-lg mx-auto">
