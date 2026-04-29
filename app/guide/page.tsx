@@ -23,32 +23,23 @@ const CHECKS = [
   { principle: "Hygiene",         check: "Milestone",            pass: "Attached to a milestone",          fail: "No milestone (warn = 1pt)", tooltip: "Is the issue tied to a milestone or sprint? This signals planning maturity and helps contributors understand priority." },
 ];
 
-const PRINCIPLES_MAP = [
-  { principle: "Real Impact",     checks: ["Title specificity — is the change clearly named?"] },
-  { principle: "Clear Context",   checks: ["Body length — enough detail to understand the problem?", "File paths — does it point to the affected code?"] },
-  { principle: "Scoped for Wave", checks: ["Area label stacking — is it one focused area, not several?"] },
-  { principle: "Implementation",  checks: ["Setup steps — can a contributor reproduce or start work?"] },
-  { principle: "Expectations",    checks: ["Acceptance criteria — is there a definition of done?"] },
-  { principle: "Hygiene",         checks: ["Labels applied — is it categorized?", "Milestone — is it attached to a Wave?"] },
-];
-
 export default function GuidePage() {
   return (
     <div className="bg-white min-h-screen">
-      <div className="max-w-3xl mx-auto px-6 py-12 space-y-14">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-10 sm:space-y-14">
 
         {/* Header */}
         <div className="space-y-4">
           <div>
             <div className="text-xs text-[#6366f1] font-semibold uppercase tracking-widest mb-2">Drips Wave Issues Guide</div>
-            <h1 className="text-3xl font-bold text-[#111827]">How issues are scored</h1>
-            <p className="text-[#111827] mt-2 leading-relaxed">
-              How the reviewer scores issues and complexity tiers affect contributor earnings is based on Drips&apos; guide.
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#111827]">How issues are scored</h1>
+            <p className="text-[#111827] text-sm sm:text-base mt-2 leading-relaxed">
+              Drips&apos; 5 principles for a good issue, operationalized as 8 deterministic checks. Complexity tiers map to contributor earnings.
             </p>
           </div>
 
           {/* CTA buttons — moved here from bottom */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Link href="/review" className="bg-[#6366f1] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#4f52cc] transition-colors">
               Review a repo →
             </Link>
@@ -61,45 +52,20 @@ export default function GuidePage() {
 
         {/* Scoring system */}
         <section className="space-y-6">
-          <div className="space-y-3">
-            {/* Principles tooltip */}
-            <details className="group border border-black rounded-2xl overflow-hidden">
-              <summary className="flex items-center justify-between px-5 py-3.5 cursor-pointer list-none select-none hover:bg-gray-50 transition-colors">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-[#111827]">How 5 principles become 8 checks</span>
-                  <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">?</span>
-                </div>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-gray-400 group-open:rotate-180 transition-transform flex-shrink-0">
-                  <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </summary>
-              <div className="border-t border-gray-100 px-5 py-4 space-y-3 bg-gray-50 text-xs text-[#111827]">
-                <p className="text-gray-600 mb-3">Drips docs outlines 5 principles for a good issue. Some principles require more than one check to be measurable. That&apos;s how 5 principles expand into 8 checks.</p>
-                {PRINCIPLES_MAP.map(p => (
-                  <div key={p.principle} className="flex gap-3">
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-200 text-[#111827] flex-shrink-0 h-fit mt-0.5">{p.principle}</span>
-                    <ul className="space-y-0.5">
-                      {p.checks.map(c => <li key={c} className="before:content-['→'] before:mr-1.5 before:text-gray-400">{c}</li>)}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </details>
-          </div>
-
           {/* Score key */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {[
               { label: "Pass", pts: "2 pts", sub: "Requirement clearly met", dot: "bg-[#6366f1]" },
               { label: "Warn", pts: "1 pt",  sub: "Partially met",           dot: "bg-amber-500" },
               { label: "Fail", pts: "0 pts", sub: "Not met",                 dot: "bg-red-500" },
             ].map(s => (
-              <div key={s.label} className="border border-black rounded-2xl px-5 py-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${s.dot}`} />
-                  <span className="font-bold text-[#111827]">{s.label} — {s.pts}</span>
+              <div key={s.label} className="border border-black rounded-2xl px-3 sm:px-5 py-3 sm:py-4">
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+                  <span className={`w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full flex-shrink-0 ${s.dot}`} />
+                  <span className="font-bold text-[#111827] text-sm sm:text-base">{s.label}</span>
                 </div>
-                <div className="text-xs text-gray-600 ml-4.5">{s.sub}</div>
+                <div className="text-[#111827] text-xs font-semibold ml-3.5 sm:ml-4.5">{s.pts}</div>
+                <div className="text-[10px] sm:text-xs text-gray-600 ml-3.5 sm:ml-4.5 mt-0.5">{s.sub}</div>
               </div>
             ))}
           </div>
@@ -113,13 +79,13 @@ export default function GuidePage() {
                 { grade: "C", range: "≥ 45%", color: "text-amber-600" },
                 { grade: "D", range: "< 45%",  color: "text-red-600" },
               ].map(g => (
-                <div key={g.grade} className="text-center py-6">
-                  <div className={`text-4xl font-black ${g.color}`}>{g.grade}</div>
-                  <div className="text-xs text-gray-600 mt-1.5">{g.range}</div>
+                <div key={g.grade} className="text-center py-5 sm:py-6">
+                  <div className={`text-3xl sm:text-4xl font-black ${g.color}`}>{g.grade}</div>
+                  <div className="text-[10px] sm:text-xs text-gray-600 mt-1 sm:mt-1.5 whitespace-nowrap">{g.range}</div>
                 </div>
               ))}
             </div>
-            <div className="px-5 py-3 border-t border-gray-100 text-xs text-[#111827]">
+            <div className="px-4 sm:px-5 py-3 border-t border-gray-100 text-xs text-[#111827]">
               Issues graded <strong>C or D</strong> get a Vera comment on GitHub with specific fixes.
             </div>
           </div>

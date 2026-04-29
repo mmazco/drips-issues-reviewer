@@ -93,16 +93,16 @@ export default function HistoryPage() {
 
   return (
     <div className="bg-white min-h-screen">
-    <div className="max-w-3xl mx-auto px-6 py-12 space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[#111827]">Review history</h1>
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-6 sm:space-y-8">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#111827]">Review history</h1>
           <p className="text-gray-700 text-sm mt-1">Track issue quality improvements over time.</p>
         </div>
         {history.length > 0 && (
           <button
             onClick={clearHistory}
-            className="text-xs text-gray-400 hover:text-red-500 transition-colors border border-black px-3 py-1.5 rounded-lg"
+            className="text-xs text-gray-400 hover:text-red-500 transition-colors border border-black px-3 py-1.5 rounded-lg whitespace-nowrap flex-shrink-0"
           >
             Clear history
           </button>
@@ -132,43 +132,43 @@ export default function HistoryPage() {
             return (
               <div key={entry.id} className="bg-white border border-black rounded-2xl overflow-hidden transition-colors">
                 {/* Repo header */}
-                <div className="px-5 py-4 flex items-center gap-4">
-                  <div className={`text-3xl font-black w-12 text-center flex-shrink-0 ${gradeStyle(grade)}`}>{grade}</div>
+                <div className="px-4 sm:px-5 py-4 flex items-start gap-3 sm:gap-4">
+                  <div className={`text-3xl font-black w-10 sm:w-12 text-center flex-shrink-0 pt-0.5 ${gradeStyle(grade)}`}>{grade}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-[#111827]">{entry.fullName}</span>
+                      <span className="font-semibold text-[#111827] text-sm sm:text-base break-words">{entry.fullName}</span>
                       {hasProgression && <DeltaBadge delta={overallDelta} />}
                     </div>
                     <div className="text-gray-600 text-xs mt-0.5 truncate">{entry.description || 'No description'}</div>
-                    <div className="flex gap-3 mt-1.5 text-xs text-gray-700">
+                    <div className="flex gap-2 sm:gap-3 mt-1.5 text-xs text-gray-700 flex-wrap">
                       <span>{entry.latestAvg}% avg</span>
                       <span className="text-[#6366f1]">{entry.latestDist?.A || 0} A</span>
                       <span className="text-[#818cf8]">{entry.latestDist?.B || 0} B</span>
                       <span className="text-amber-600">{entry.latestDist?.C || 0} C</span>
                       <span className="text-red-600">{entry.latestDist?.D || 0} D</span>
-                      <span>·</span>
+                      <span className="hidden sm:inline">·</span>
                       <span>{snapshots.length} review{snapshots.length !== 1 ? 's' : ''}</span>
                     </div>
                   </div>
                   <div className="flex-shrink-0 flex flex-col items-end gap-2">
                     <Link
                       href={`/review?url=${encodeURIComponent(entry.repoUrl)}`}
-                      className="text-xs font-medium text-[#6366f1] bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors"
+                      className="text-xs font-medium text-[#6366f1] bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
                     >
                       Re-review →
                     </Link>
                     <button
                       onClick={() => toggleExpand(entry.id)}
-                      className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                      className="text-xs text-gray-400 hover:text-gray-600 transition-colors whitespace-nowrap"
                     >
-                      {isExpanded ? 'Hide issues ↑' : 'Show issues ↓'}
+                      {isExpanded ? 'Hide ↑' : 'Show ↓'}
                     </button>
                   </div>
                 </div>
 
                 {/* Snapshot timeline */}
                 {snapshots.length > 1 && (
-                  <div className="px-5 pb-3 flex items-center gap-2 overflow-x-auto">
+                  <div className="px-4 sm:px-5 pb-3 flex items-center gap-2 overflow-x-auto">
                     {snapshots.map((snap, i) => {
                       const g = overallGrade(snap.avg);
                       const isActive = snapshotIdx === i;
@@ -193,7 +193,7 @@ export default function HistoryPage() {
 
                 {/* Issue breakdown */}
                 {isExpanded && activeSnap && (
-                  <div className="border-t border-[#EDECE6] px-5 py-4">
+                  <div className="border-t border-[#EDECE6] px-4 sm:px-5 py-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="text-xs text-gray-700 font-semibold uppercase tracking-wide">
                         Issues — {formatDate(activeSnap.reviewedAt)}

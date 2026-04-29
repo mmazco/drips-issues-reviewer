@@ -60,7 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full flex flex-col bg-white">
         <Nav />
         <main className="flex-1">{children}</main>
-        <footer className="text-center text-xs text-[#111827] py-6 border-t border-gray-100 bg-white">
+        <footer className="text-center text-xs text-[#111827] py-6 px-4 border-t border-gray-100 bg-white">
           Drips Wave Issues Reviewer · Internal Tool ·{" "}
           <a href="https://www.drips.network" target="_blank" rel="noreferrer" className="hover:text-[#6366f1]">
             drips.network

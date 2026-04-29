@@ -19,6 +19,15 @@ html {
   font-size: 17px;
 }
 
+html,
+body {
+  /* Prevent any wide child element from creating horizontal scroll on
+     mobile. Without this, a single overflowing row in /review can make
+     the whole page wobble side-to-side as the user scrolls. */
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

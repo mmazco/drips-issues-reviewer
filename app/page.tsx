@@ -166,34 +166,34 @@ export default function HomePage() {
     <div className="bg-white min-h-screen">
 
       {/* Hero */}
-      <section className={`max-w-2xl mx-auto px-6 text-center transition-all ${summary ? 'pt-12 pb-8' : 'pt-20 pb-12'}`}>
+      <section className={`max-w-2xl mx-auto px-4 sm:px-6 text-center transition-all ${summary ? 'pt-10 pb-8 sm:pt-12' : 'pt-14 sm:pt-20 pb-12'}`}>
         <div className="inline-flex items-center gap-2 bg-white border border-black text-[#6366f1] text-xs font-semibold px-3 py-1.5 rounded-full mb-6 shadow-sm">
           <span className="w-1.5 h-1.5 rounded-full bg-[#6366f1]" />
           Drips Wave · Internal tool
         </div>
-        <h1 className="text-[2.5rem] font-bold text-[#111827] tracking-tight leading-tight mb-3">
-          Optimize maintainers repo<br />issues per Wave batch.
+        <h1 className="text-3xl sm:text-[2.5rem] font-bold text-[#111827] tracking-tight leading-tight mb-3">
+          Optimize maintainers repo issues per Wave batch.
         </h1>
-        <p className="text-[#111827] text-base leading-relaxed mb-8 max-w-lg mx-auto">
+        <p className="text-[#111827] text-sm sm:text-base leading-relaxed mb-8 max-w-lg mx-auto">
           Review and score maintainers GitHub issues and provide QA feedback.
         </p>
 
         {/* Search card */}
         <div className="bg-white rounded-2xl border border-black shadow-sm overflow-hidden text-left">
-          <div className="px-6 py-4 flex items-center gap-3">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-2 sm:gap-3">
             <input
               value={url}
               onChange={e => setUrl(e.target.value)}
               onKeyDown={e => e.key === "Enter" && runReview()}
               placeholder="https://github.com/owner/repo"
-              className="flex-1 text-[#111827] text-base bg-transparent outline-none placeholder:text-gray-400 font-medium"
+              className="flex-1 min-w-0 text-[#111827] text-sm sm:text-base bg-transparent outline-none placeholder:text-gray-400 font-medium"
             />
             <button
               onClick={runReview}
               disabled={!url.trim() || loading}
-              className="flex-shrink-0 bg-[#6366f1] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#4f52cc] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="flex-shrink-0 bg-[#6366f1] text-white text-xs sm:text-sm font-semibold px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl hover:bg-[#4f52cc] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? "Reviewing…" : "Review →"}
+              {loading ? "…" : "Review →"}
             </button>
           </div>
         </div>
@@ -205,7 +205,7 @@ export default function HomePage() {
 
       {/* Loading skeleton */}
       {loading && (
-        <div className="max-w-2xl mx-auto px-6 pb-10 space-y-3 animate-pulse">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 pb-10 space-y-3 animate-pulse">
           <div className="h-20 bg-gray-100 rounded-2xl" />
           {[...Array(5)].map((_, i) => (
             <div key={i} className="h-12 bg-gray-50 rounded-xl border border-gray-100" />
@@ -215,7 +215,7 @@ export default function HomePage() {
 
       {/* Inline results */}
       {summary && repoMeta && !loading && (
-        <div className="max-w-2xl mx-auto px-6 pb-16 space-y-4">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 pb-16 space-y-4">
 
           {simulated && (
             <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5">
@@ -249,59 +249,78 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Issues list */}
+          {/* Issues list — flex layout, hides rubric dots & %  on small screens */}
           <div className="bg-white border border-black rounded-2xl overflow-hidden">
-            {/* Table header */}
-            <div className="grid text-xs text-gray-700 px-5 py-2.5 border-b border-gray-100 bg-gray-50"
-              style={{ gridTemplateColumns: "40px 1fr 40px 7rem 120px" }}>
-              <div>#</div>
-              <div>Title</div>
-              <div className="text-center">%</div>
-              <div>Rubric</div>
-              <div />
+            {/* Table header (desktop only — too cramped on mobile) */}
+            <div className="hidden sm:flex items-center gap-3 text-xs text-gray-700 px-5 py-2.5 border-b border-gray-100 bg-gray-50">
+              <span className="w-8">#</span>
+              <span className="flex-1">Title</span>
+              <span className="w-10 text-center">%</span>
+              <span className="w-28">Rubric</span>
+              <span className="w-28" />
             </div>
 
-            {summary.scored.map(x => (
-              <div
-                key={x.issue.id}
-                className="grid items-center px-5 py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors text-sm"
-                style={{ gridTemplateColumns: "40px 1fr 40px 7rem 120px" }}
-              >
-                <div className="text-gray-600 text-xs">{x.issue.number}</div>
-                <div className="truncate text-xs pr-4">
-                  <span className={`font-bold mr-1.5 ${gradeStyle(x.grade)}`}>{x.grade}</span>
-                  {x.issue.title}
+            {summary.scored.map(x => {
+              const cta = (x.grade === "C" || x.grade === "D") ? (
+                <Link
+                  href={`/review?url=${encodeURIComponent(url.trim())}&issue=${x.issue.number}`}
+                  className="text-xs font-medium bg-indigo-50 text-[#6366f1] hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+                >
+                  Post feedback →
+                </Link>
+              ) : (
+                <Link
+                  href={`/review?url=${encodeURIComponent(url.trim())}&issue=${x.issue.number}`}
+                  className="text-xs text-gray-600 hover:text-[#6366f1] transition-colors"
+                >
+                  View →
+                </Link>
+              );
+              return (
+                <div
+                  key={x.issue.id}
+                  className="px-4 sm:px-5 py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors text-sm"
+                >
+                  {/* Desktop: single row. Mobile: title row + meta row. */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-gray-600 text-xs w-8 flex-shrink-0">{x.issue.number}</span>
+                    <span className="flex-1 min-w-0 text-xs flex items-center gap-1.5">
+                      <span className={`font-bold flex-shrink-0 ${gradeStyle(x.grade)}`}>{x.grade}</span>
+                      <span className="truncate text-[#111827]">{x.issue.title}</span>
+                    </span>
+                    {/* Hide rubric pills + % on small screens — re-show in second row below */}
+                    <span className={`hidden sm:inline-block text-xs font-semibold text-center w-10 flex-shrink-0 ${gradeStyle(x.grade)}`}>
+                      {x.pct}
+                    </span>
+                    <span className="hidden sm:flex gap-1 w-28 flex-shrink-0">
+                      {RUBRIC.map(r => (
+                        <span
+                          key={r.key}
+                          title={`${r.label}: ${x.checks[r.key as keyof typeof x.checks].note}`}
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ background: STATUS_COLORS[x.checks[r.key as keyof typeof x.checks].status] }}
+                        />
+                      ))}
+                    </span>
+                    <span className="text-right w-auto sm:w-28 flex-shrink-0">{cta}</span>
+                  </div>
+                  {/* Mobile-only second row: % + rubric dots */}
+                  <div className="flex sm:hidden items-center gap-3 mt-1.5 pl-11">
+                    <span className={`text-xs font-semibold ${gradeStyle(x.grade)}`}>{x.pct}%</span>
+                    <span className="flex gap-1">
+                      {RUBRIC.map(r => (
+                        <span
+                          key={r.key}
+                          title={`${r.label}: ${x.checks[r.key as keyof typeof x.checks].note}`}
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                          style={{ background: STATUS_COLORS[x.checks[r.key as keyof typeof x.checks].status] }}
+                        />
+                      ))}
+                    </span>
+                  </div>
                 </div>
-                <div className={`text-xs font-semibold text-center ${gradeStyle(x.grade)}`}>{x.pct}</div>
-                <div className="flex gap-1 px-1">
-                  {RUBRIC.map(r => (
-                    <span
-                      key={r.key}
-                      title={`${r.label}: ${x.checks[r.key as keyof typeof x.checks].note}`}
-                      className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ background: STATUS_COLORS[x.checks[r.key as keyof typeof x.checks].status] }}
-                    />
-                  ))}
-                </div>
-                <div className="text-right">
-                  {(x.grade === "C" || x.grade === "D") ? (
-                    <Link
-                      href={`/review?url=${encodeURIComponent(url.trim())}&issue=${x.issue.number}`}
-                      className="text-xs font-medium bg-indigo-50 text-[#6366f1] hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap"
-                    >
-                      Post feedback →
-                    </Link>
-                  ) : (
-                    <Link
-                      href={`/review?url=${encodeURIComponent(url.trim())}&issue=${x.issue.number}`}
-                      className="text-xs text-gray-600 hover:text-[#6366f1] transition-colors"
-                    >
-                      View →
-                    </Link>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="flex items-center justify-between pt-1">
@@ -320,7 +339,7 @@ export default function HomePage() {
 
       {/* How it works — only when no results */}
       {!summary && !loading && (
-        <section className="max-w-2xl mx-auto px-6 pb-20">
+        <section className="max-w-2xl mx-auto px-4 sm:px-6 pb-20">
           <h2 className="text-lg font-semibold text-[#111827] mb-1">How it works</h2>
           <p className="text-[#111827] text-sm mb-5">Four steps from URL to feedback posted.</p>
 

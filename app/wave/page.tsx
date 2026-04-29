@@ -18,11 +18,11 @@ function gradeColor(grade: string | null) {
 export default function WavePage() {
   return (
     <div className="bg-white min-h-screen">
-    <div className="max-w-3xl mx-auto px-6 py-12 space-y-10">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8 sm:space-y-10">
       <div className="space-y-3">
         <div>
           <div className="text-xs text-[#6366f1] font-semibold uppercase tracking-widest mb-2">Drips Wave 4 · 22–29 Apr 2026</div>
-          <h1 className="text-2xl font-bold text-[#111827]">Wave 4 Hackathon projects</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#111827]">Wave 4 Hackathon projects</h1>
           <p className="text-gray-600 text-sm mt-1">{WAVE4_TEAMS.length} teams approved</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -47,13 +47,13 @@ export default function WavePage() {
 
       <div className="bg-white rounded-2xl border border-black overflow-hidden">
         {WAVE4_TEAMS.map((team, i) => (
-          <div key={i} className="flex items-start gap-4 px-5 py-4 border-b border-[#EDECE6] last:border-0 hover:bg-gray-50 transition-colors">
-            <div className={`text-xl font-bold w-8 text-center pt-0.5 ${gradeColor(team.issueGrade)}`}>
+          <div key={i} className="flex items-start gap-3 sm:gap-4 px-4 sm:px-5 py-4 border-b border-[#EDECE6] last:border-0 hover:bg-gray-50 transition-colors">
+            <div className={`text-xl font-bold w-7 sm:w-8 text-center pt-0.5 flex-shrink-0 ${gradeColor(team.issueGrade)}`}>
               {team.issueGrade ?? '—'}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-[#111827] text-sm">{team.name}</span>
+                <span className="font-semibold text-[#111827] text-sm break-words">{team.name}</span>
                 {team.openIssues !== null && (
                   <span className="text-xs text-[#111827]">{team.openIssues} issues</span>
                 )}
@@ -68,16 +68,16 @@ export default function WavePage() {
                 <>
                   <Link
                     href={`/review?url=${encodeURIComponent(team.repoUrl)}`}
-                    className="block text-xs text-[#6366f1] hover:underline"
+                    className="block text-xs text-[#6366f1] hover:underline whitespace-nowrap"
                   >
                     Review →
                   </Link>
-                  <a href={team.repoUrl} target="_blank" rel="noreferrer" className="block text-xs text-[#111827] hover:text-[#6366f1]">
+                  <a href={team.repoUrl} target="_blank" rel="noreferrer" className="block text-xs text-[#111827] hover:text-[#6366f1] whitespace-nowrap">
                     GitHub ↗
                   </a>
                 </>
               ) : (
-                <span className="text-xs text-gray-500">No repo</span>
+                <span className="text-xs text-gray-500 whitespace-nowrap">No repo</span>
               )}
             </div>
           </div>

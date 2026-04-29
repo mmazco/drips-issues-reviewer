@@ -373,16 +373,16 @@ function ReviewContent() {
 
   return (
     <div className="bg-white min-h-screen">
-    <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6 sm:space-y-8">
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[#111827]">Review a repository</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-[#111827]">Review a repository</h1>
         <p className="text-gray-600 text-sm mt-1">Score all open issues against the Drips Wave rubric.</p>
       </div>
 
       {/* Search */}
-      <div className="border border-black rounded-2xl p-4 flex flex-col sm:flex-row gap-3">
+      <div className="border border-black rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row gap-3">
         <input
           value={repoUrl}
           onChange={e => setRepoUrl(e.target.value)}
@@ -533,8 +533,8 @@ function ReviewContent() {
 
           {/* Issues accordion */}
           <div className="border border-black rounded-2xl overflow-hidden">
-            {/* Column header */}
-            <div className="flex items-center gap-3 px-5 py-2.5 border-b border-gray-100 bg-gray-50 text-xs text-gray-700">
+            {/* Column header (desktop only — too cramped to fit on mobile) */}
+            <div className="hidden sm:flex items-center gap-3 px-5 py-2.5 border-b border-gray-100 bg-gray-50 text-xs text-gray-700">
               <span className="w-6">#</span>
               <span className="flex-1">Title</span>
               <span className="w-8 text-center flex-shrink-0">%</span>
@@ -549,49 +549,71 @@ function ReviewContent() {
 
               return (
                 <div key={x.issue.id} className={idx < visibleIssues.length - 1 ? "border-b border-gray-100" : ""}>
-                  {/* Row */}
+                  {/* Row — single line on desktop, title row + meta row on mobile */}
                   <button
                     onClick={() => toggleExpand(x.issue.number)}
-                    className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors text-left"
+                    className="w-full px-4 sm:px-5 py-3 sm:py-3.5 hover:bg-gray-50 transition-colors text-left"
                   >
-                    <span className="text-xs text-gray-700 w-6 flex-shrink-0">{x.issue.number}</span>
-                    <span className="flex-1 min-w-0 flex items-center gap-2">
-                      <span className={`text-xs font-bold flex-shrink-0 ${gradeStyle(x.grade)}`}>{x.grade}</span>
-                      <span className="text-sm text-[#111827] truncate">{x.issue.title}</span>
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <span className="text-xs text-gray-700 w-6 flex-shrink-0">{x.issue.number}</span>
+                      <span className="flex-1 min-w-0 flex items-center gap-1.5 sm:gap-2">
+                        <span className={`text-xs font-bold flex-shrink-0 ${gradeStyle(x.grade)}`}>{x.grade}</span>
+                        <span className="text-sm text-[#111827] truncate">{x.issue.title}</span>
+                        {isWaveTagged(x.issue) && (
+                          <span
+                            className="hidden sm:inline-flex text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-50 text-[#6366f1] flex-shrink-0"
+                            title="Tagged for the Stellar Wave by the maintainer"
+                          >
+                            Stellar Wave
+                          </span>
+                        )}
+                      </span>
+                      {/* Hidden on mobile — moved to the meta row below to avoid crushing the title */}
+                      <span className={`hidden sm:inline-block text-xs font-semibold w-8 text-center flex-shrink-0 ${gradeStyle(x.grade)}`}>{x.pct}</span>
+                      <span className="hidden sm:flex gap-0.5 flex-shrink-0 w-[7rem]">
+                        {RUBRIC.map(r => (
+                          <span
+                            key={r.key}
+                            title={`${r.label}: ${x.checks[r.key as keyof typeof x.checks].note}`}
+                            className="w-3 h-3 rounded-full"
+                            style={{ background: STATUS_COLORS[x.checks[r.key as keyof typeof x.checks].status] }}
+                          />
+                        ))}
+                      </span>
+                      <span className="w-auto sm:w-28 text-right flex-shrink-0">
+                        {needsFeedback ? (
+                          <span className={`text-xs font-medium px-2 sm:px-2.5 py-1 rounded-lg whitespace-nowrap ${qaPosted[x.issue.number] ? "bg-green-50 text-green-700" : "text-[#6366f1]"}`}>
+                            {qaPosted[x.issue.number] ? "✓ sent" : <><span className="hidden sm:inline">Post feedback</span><span className="sm:hidden">Review</span></>}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-300">{isOpen ? "↑" : "↓"}</span>
+                        )}
+                      </span>
+                    </div>
+                    {/* Mobile-only meta row: % + rubric dots + Stellar Wave pill */}
+                    <div className="flex sm:hidden items-center gap-2 mt-1.5 pl-8">
+                      <span className={`text-xs font-semibold ${gradeStyle(x.grade)}`}>{x.pct}%</span>
+                      <span className="flex gap-1">
+                        {RUBRIC.map(r => (
+                          <span
+                            key={r.key}
+                            title={`${r.label}: ${x.checks[r.key as keyof typeof x.checks].note}`}
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ background: STATUS_COLORS[x.checks[r.key as keyof typeof x.checks].status] }}
+                          />
+                        ))}
+                      </span>
                       {isWaveTagged(x.issue) && (
-                        <span
-                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-50 text-[#6366f1] flex-shrink-0"
-                          title="Tagged for the Stellar Wave by the maintainer"
-                        >
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-50 text-[#6366f1]">
                           Stellar Wave
                         </span>
                       )}
-                    </span>
-                    <span className={`text-xs font-semibold w-8 text-center flex-shrink-0 ${gradeStyle(x.grade)}`}>{x.pct}</span>
-                    <span className="flex gap-0.5 flex-shrink-0 w-[7rem]">
-                      {RUBRIC.map(r => (
-                        <span
-                          key={r.key}
-                          title={`${r.label}: ${x.checks[r.key as keyof typeof x.checks].note}`}
-                          className="w-3 h-3 rounded-full"
-                          style={{ background: STATUS_COLORS[x.checks[r.key as keyof typeof x.checks].status] }}
-                        />
-                      ))}
-                    </span>
-                    <span className="w-28 text-right flex-shrink-0">
-                      {needsFeedback ? (
-                        <span className={`text-xs font-medium px-2.5 py-1 rounded-lg whitespace-nowrap ${qaPosted[x.issue.number] ? "bg-green-50 text-green-700" : "text-[#6366f1]"}`}>
-                          {qaPosted[x.issue.number] ? "✓ sent" : "Post feedback"}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-300">{isOpen ? "↑" : "↓"}</span>
-                      )}
-                    </span>
+                    </div>
                   </button>
 
                   {/* Expanded content */}
                   {isOpen && (
-                    <div className="border-t border-gray-100 bg-gray-50 px-5 py-5 space-y-6">
+                    <div className="border-t border-gray-100 bg-gray-50 px-4 sm:px-5 py-4 sm:py-5 space-y-5 sm:space-y-6">
 
                       {/* Issue meta + GitHub link */}
                       <div className="flex items-center justify-between">
@@ -725,9 +747,9 @@ function ReviewContent() {
                                 rows={10}
                                 className="w-full bg-white border border-black rounded-xl px-4 py-3 text-xs font-mono leading-relaxed focus:outline-none focus:border-[#6366f1] resize-y"
                               />
-                              <div className="flex items-center gap-2">
-                                {!isConnected && <span className="text-xs text-gray-600 flex-1">⚡ Simulated — <a href="/api/auth/github" className="text-[#6366f1] hover:underline">connect GitHub</a> to post for real</span>}
-                                <button onClick={() => setQaComments(prev => { const n = { ...prev }; delete n[x.issue.number]; return n; })} className="text-xs text-[#111827] hover:text-red-500 transition-colors ml-auto">Discard</button>
+                              {!isConnected && <div className="text-xs text-gray-600">⚡ Simulated — <a href="/api/auth/github" className="text-[#6366f1] hover:underline">connect GitHub</a> to post for real</div>}
+                              <div className="flex items-center gap-2 justify-end flex-wrap">
+                                <button onClick={() => setQaComments(prev => { const n = { ...prev }; delete n[x.issue.number]; return n; })} className="text-xs text-[#111827] hover:text-red-500 transition-colors">Discard</button>
                                 <button
                                   onClick={() => submitQAComment(x.issue)}
                                   disabled={qaPosting[x.issue.number] || !qaComments[x.issue.number]?.trim()}
@@ -827,12 +849,12 @@ function ReviewContent() {
                                           rows={8}
                                           className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono leading-relaxed focus:outline-none focus:border-[#6366f1] resize-y"
                                         />
-                                        <div className="flex items-center gap-2">
-                                          {!isConnected && <span className="text-xs text-gray-600 flex-1">⚡ Simulated — <a href="/api/auth/github" className="text-[#6366f1] hover:underline">connect GitHub</a> to open for real</span>}
+                                        {!isConnected && <div className="text-xs text-gray-600">⚡ Simulated — <a href="/api/auth/github" className="text-[#6366f1] hover:underline">connect GitHub</a> to open for real</div>}
+                                        <div className="flex items-center gap-2 justify-end flex-wrap">
                                           <button
                                             onClick={() => submitRepoCheckIssue(mode)}
                                             disabled={repoCheckPosting[mode] || !repoCheckTitles[mode]?.trim() || !repoCheckBodies[mode]?.trim()}
-                                            className="ml-auto text-xs font-semibold bg-[#6366f1] text-white px-4 py-2 rounded-lg hover:bg-[#4f52cc] disabled:opacity-50 transition-colors"
+                                            className="text-xs font-semibold bg-[#6366f1] text-white px-4 py-2 rounded-lg hover:bg-[#4f52cc] disabled:opacity-50 transition-colors"
                                           >
                                             {repoCheckPosting[mode] ? "Opening…" : isConnected ? "Open issue on GitHub" : "Simulate open ⚡"}
                                           </button>
