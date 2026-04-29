@@ -195,30 +195,19 @@ export default function Nav() {
                 </Link>
               ))}
 
-              <div className="h-px bg-gray-100 my-2" />
-
-              {authLoading ? (
-                <div className="px-4 py-3 text-sm text-gray-400 animate-pulse">
-                  ⬡ checking…
-                </div>
-              ) : isConnected ? (
-                <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-[#111827]">⬡ @{username}</span>
-                  <a
-                    href="/api/auth/logout"
-                    className="text-sm text-[#111827] hover:text-red-500 transition-colors"
-                  >
-                    Disconnect
-                  </a>
-                </div>
-              ) : (
-                <a
-                  href="/api/auth/github"
-                  className="flex items-center justify-center gap-2 bg-[#1a1a2e] text-white text-sm font-semibold px-4 py-3 rounded-lg hover:bg-[#2d2d45] transition-colors"
-                >
-                  <GithubIcon size={16} />
-                  Connect GitHub
-                </a>
+              {isConnected && (
+                <>
+                  <div className="h-px bg-gray-100 my-2" />
+                  <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-[#111827]">⬡ @{username}</span>
+                    <a
+                      href="/api/auth/logout"
+                      className="text-sm text-[#111827] hover:text-red-500 transition-colors"
+                    >
+                      Disconnect
+                    </a>
+                  </div>
+                </>
               )}
             </div>
           </div>
