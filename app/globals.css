@@ -38,3 +38,19 @@ body {
 .grade-B { color: #65a30d; }
 .grade-C { color: #d97706; }
 .grade-D { color: #dc2626; }
+
+/* Prevent iOS Safari from zooming the page when the user taps a text
+   input whose computed font-size is below 16px. The browser triggers an
+   automatic zoom whenever a focused input is smaller than 16px; forcing
+   a minimum of 16px on mobile disables that behaviour without affecting
+   desktop layout (the html root is 17px so this only kicks in on narrow
+   viewports where our text-sm / text-xs inputs would otherwise be <16px). */
+@media (max-width: 767px) {
+  input[type="text"],
+  input[type="search"],
+  input[type="url"],
+  input[type="email"],
+  textarea {
+    font-size: 16px !important;
+  }
+}

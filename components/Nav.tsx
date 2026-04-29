@@ -50,8 +50,8 @@ export default function Nav() {
           <span className="text-[#6366f1] font-black text-base tracking-tight">
             DRIPS
           </span>
-          <span className="text-[#111827] text-xs font-medium hidden sm:inline whitespace-nowrap">
-            Wave Issues Reviewer
+          <span className="text-[#111827] text-xs font-medium whitespace-nowrap">
+            Issues Reviewer
           </span>
         </Link>
 
@@ -100,15 +100,34 @@ export default function Nav() {
           )}
         </div>
 
-        {/* Mobile hamburger (below md) */}
-        <button
-          type="button"
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          aria-expanded={menuOpen}
-          aria-controls="mobile-menu"
-          onClick={() => setMenuOpen((v) => !v)}
-          className="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg text-[#111827] hover:bg-gray-100 transition-colors flex-shrink-0"
-        >
+        {/* Mobile: auth quick-action visible in the header bar itself, before
+            the burger, so users can sign in without opening the menu. */}
+        <div className="md:hidden flex items-center gap-2 flex-shrink-0">
+          {!authLoading && (
+            isConnected ? (
+              <span className="text-xs text-[#111827] bg-gray-100 px-2.5 py-1.5 rounded-lg whitespace-nowrap max-w-[90px] truncate">
+                @{username}
+              </span>
+            ) : (
+              <a
+                href="/api/auth/github"
+                className="flex items-center gap-1 bg-[#1a1a2e] text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg hover:bg-[#2d2d45] transition-colors whitespace-nowrap"
+              >
+                <GithubIcon size={12} />
+                Connect
+              </a>
+            )
+          )}
+
+          {/* Hamburger (below md) */}
+          <button
+            type="button"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
+            onClick={() => setMenuOpen((v) => !v)}
+            className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-[#111827] hover:bg-gray-100 transition-colors flex-shrink-0"
+          >
           {menuOpen ? (
             // Close icon
             <svg
@@ -141,7 +160,8 @@ export default function Nav() {
               <line x1="4" y1="17" x2="20" y2="17" />
             </svg>
           )}
-        </button>
+          </button>
+        </div>
       </div>
 
       {/* Mobile dropdown panel */}

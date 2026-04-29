@@ -351,9 +351,9 @@ export default function HomePage() {
                   {step.icon}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-[#111827] text-sm">{step.title}</span>
-                    <span className="text-xs font-medium text-gray-700 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full">{step.provider}</span>
+                    <span className="text-xs font-medium text-gray-700 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full whitespace-nowrap">{step.provider}</span>
                   </div>
                   <p className="text-[#111827] text-xs mt-1 leading-relaxed">{step.desc}</p>
                 </div>
