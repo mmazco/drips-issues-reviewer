@@ -19,7 +19,7 @@ export default function Nav() {
       <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <span className="text-[#6366f1] font-black text-base tracking-tight">DRIPS</span>
-          <span className="text-[#111827] text-xs font-medium">Issues Reviewer</span>
+          <span className="text-[#111827] text-xs font-medium">Wave Issues Reviewer</span>
         </Link>
 
         <div className="flex items-center gap-2">

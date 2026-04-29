@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { WAVE4_TEAMS } from "@/lib/teams";
+
+export const metadata: Metadata = {
+  title: "Wave",
+  description: "Drips Wave 4 hackathon teams — 14 approved projects with issue scores and review status.",
+};
 
 function gradeColor(grade: string | null) {
   if (grade === 'A') return 'text-[#6366f1] font-bold';

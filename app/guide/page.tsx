@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Guide | Drips Issues Reviewer",
+  title: "Guide",
+  description: "How the Drips Wave issue rubric works: 5 principles, 8 automated checks, complexity tiers.",
 };
 
 const COMPLEXITY = [

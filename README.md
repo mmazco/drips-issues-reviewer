@@ -1,6 +1,6 @@
-# Drips Issues Reviewer
+# Drips Wave Issues Reviewer
 
-An internal tool for [Drips Wave](https://www.drips.network/) program organizers and maintainers. Paste a GitHub repository URL and the app scores every open issue against the 5 Drips principles — expressed as 8 deterministic checks — then lets the QA agent (Vera) draft and post actionable feedback directly on GitHub.
+Internal tool to audit and optimize GitHub Issues quality for maintainers in the [Drips Wave](https://www.drips.network/) program. Paste a GitHub repository URL and the app scores every open issue against the 5 Drips principles — expressed as 8 deterministic checks — then lets the QA agent (Vera) draft and post actionable feedback directly on GitHub.
 
 > **Vera** is the brand of the QA agent. The implementation is direct calls to Anthropic Claude (Opus 4.7 by default) — no separate agent runtime to host. See [`docs/vera-skills/drips-qa-feedback/SKILL.md`](./docs/vera-skills/drips-qa-feedback/SKILL.md) for the agent spec.
 
